@@ -368,10 +368,270 @@ async function getMyAssignments(req, res) {
   }
 }
 
+/**
+ * Submit or update multi-dimensional scores for a judge assignment
+ * POST /api/judging/scores
+ * Protected: JUDGE, ORGANIZER, ADMIN
+ */
+async function submitScores(req, res) {
+  try {
+    const { assignmentId, scores } = req.body;
+
+    if (!assignmentId || !Array.isArray(scores) || scores.length === 0) {
+      return res.status(400).json({
+        error: 'Validation error: assignmentId and non-empty scores array are required.',
+        code: 'VALIDATION_FAILED',
+      });
+    }
+
+    // 1. Fetch assignment with event and criteria
+    const assignment = await prisma.judgeAssignment.findUnique({
+      where: { id: assignmentId },
+      include: {
+        event: {
+          include: {
+            rubricCriteria: true,
+          },
+        },
+        submission: true,
+      },
+    });
+
+    if (!assignment) {
+      return res.status(404).json({
+        error: 'Judge assignment not found.',
+        code: 'ASSIGNMENT_NOT_FOUND',
+      });
+    }
+
+    // 2. Authorization check: must be assigned judge or ADMIN
+    if (req.user.role !== 'ADMIN' && assignment.judgeId !== req.user.id) {
+      return res.status(403).json({
+        error: 'Forbidden: You can only submit scores for your own assigned evaluations.',
+        code: 'NOT_ASSIGNED_JUDGE',
+      });
+    }
+
+    // 3. Deadline and status check
+    const now = new Date();
+    if (assignment.event.status === 'FINALIZED') {
+      return res.status(403).json({
+        error: 'Forbidden: Judging is locked because the event is finalized.',
+        code: 'EVENT_FINALIZED',
+      });
+    }
+
+    if (now > new Date(assignment.event.judgingDeadline) && req.user.role !== 'ADMIN') {
+      return res.status(403).json({
+        error: `Forbidden: Judging deadline passed on ${assignment.event.judgingDeadline.toISOString()}.`,
+        code: 'JUDGING_DEADLINE_PASSED',
+      });
+    }
+
+    // 4. Rubric validation
+    const validCriteriaMap = new Map();
+    assignment.event.rubricCriteria.forEach(c => validCriteriaMap.set(c.id, c));
+
+    for (const item of scores) {
+      const { criteriaId, scoreValue } = item;
+      const criterion = validCriteriaMap.get(criteriaId);
+
+      if (!criterion) {
+        return res.status(400).json({
+          error: `Validation error: criteriaId '${criteriaId}' does not belong to this event's rubric.`,
+          code: 'INVALID_CRITERIA_ID',
+        });
+      }
+
+      const numVal = parseFloat(scoreValue);
+      if (isNaN(numVal) || numVal < criterion.minScore || numVal > criterion.maxScore) {
+        return res.status(400).json({
+          error: `Validation error: Score for '${criterion.name}' must be between ${criterion.minScore} and ${criterion.maxScore} (Received: ${scoreValue}).`,
+          code: 'SCORE_OUT_OF_BOUNDS',
+        });
+      }
+    }
+
+    // 5. Atomic upsert of scores and assignment completion status
+    const result = await prisma.$transaction(async (tx) => {
+      // Upsert individual criterion scores
+      for (const item of scores) {
+        await tx.score.upsert({
+          where: {
+            assignmentId_criteriaId: {
+              assignmentId,
+              criteriaId: item.criteriaId,
+            },
+          },
+          update: {
+            scoreValue: parseFloat(item.scoreValue),
+            feedback: item.feedback ? item.feedback.trim() : null,
+          },
+          create: {
+            assignmentId,
+            criteriaId: item.criteriaId,
+            scoreValue: parseFloat(item.scoreValue),
+            feedback: item.feedback ? item.feedback.trim() : null,
+          },
+        });
+      }
+
+      // Check if all event rubric criteria are scored
+      const totalCriteriaCount = assignment.event.rubricCriteria.length;
+      const scoredCount = await tx.score.count({
+        where: { assignmentId },
+      });
+
+      const isCompleted = scoredCount >= totalCriteriaCount;
+      const updatedAssignment = await tx.judgeAssignment.update({
+        where: { id: assignmentId },
+        data: {
+          status: isCompleted ? 'COMPLETED' : 'PENDING',
+        },
+        include: {
+          scores: {
+            include: { criteria: true },
+          },
+        },
+      });
+
+      // Recalculate raw score mean for this submission across all completed assignments
+      const completedAssignments = await tx.judgeAssignment.findMany({
+        where: {
+          submissionId: assignment.submissionId,
+          status: 'COMPLETED',
+        },
+        include: {
+          scores: {
+            include: { criteria: true },
+          },
+        },
+      });
+
+      if (completedAssignments.length > 0) {
+        let totalWeightedSum = 0;
+        for (const ca of completedAssignments) {
+          let evalWeightedScore = 0;
+          for (const s of ca.scores) {
+            evalWeightedScore += s.scoreValue * (s.criteria.weight || 1.0);
+          }
+          totalWeightedSum += evalWeightedScore;
+        }
+        const rawMean = parseFloat((totalWeightedSum / completedAssignments.length).toFixed(4));
+
+        await tx.projectScoreSummary.upsert({
+          where: { submissionId: assignment.submissionId },
+          update: { rawScoreMean: rawMean },
+          create: {
+            submissionId: assignment.submissionId,
+            rawScoreMean: rawMean,
+          },
+        });
+      }
+
+      return updatedAssignment;
+    });
+
+    // Audit log
+    await prisma.auditLog.create({
+      data: {
+        eventId: assignment.eventId,
+        actorId: req.user.id,
+        action: 'SCORE_SUBMITTED',
+        targetResource: 'Score',
+        targetId: assignmentId,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+        metadata: JSON.stringify({
+          scoresCount: scores.length,
+          status: result.status,
+          submissionId: assignment.submissionId,
+        }),
+      },
+    });
+
+    return res.status(200).json({
+      message: 'Scores submitted successfully.',
+      assignment: result,
+    });
+  } catch (err) {
+    console.error('[SUBMIT SCORES ERROR]', err);
+    return res.status(500).json({
+      error: 'Internal server error submitting scores.',
+      code: 'SERVER_ERROR',
+    });
+  }
+}
+
+/**
+ * Get scores submitted for a specific assignment
+ * GET /api/judging/scores/:assignmentId
+ * Protected: JUDGE, ORGANIZER, ADMIN
+ */
+async function getScoresByAssignment(req, res) {
+  try {
+    const { assignmentId } = req.params;
+
+    const assignment = await prisma.judgeAssignment.findUnique({
+      where: { id: assignmentId },
+      include: {
+        event: {
+          include: {
+            rubricCriteria: true,
+          },
+        },
+        scores: {
+          include: {
+            criteria: true,
+          },
+        },
+        submission: {
+          select: {
+            id: true,
+            title: true,
+            tagline: true,
+            team: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    if (!assignment) {
+      return res.status(404).json({
+        error: 'Judge assignment not found.',
+        code: 'ASSIGNMENT_NOT_FOUND',
+      });
+    }
+
+    if (
+      req.user.role !== 'ADMIN' &&
+      req.user.role !== 'ORGANIZER' &&
+      assignment.judgeId !== req.user.id
+    ) {
+      return res.status(403).json({
+        error: 'Forbidden: You can only view scores for your own assigned evaluations.',
+        code: 'FORBIDDEN',
+      });
+    }
+
+    return res.status(200).json({
+      assignment,
+    });
+  } catch (err) {
+    console.error('[GET SCORES BY ASSIGNMENT ERROR]', err);
+    return res.status(500).json({
+      error: 'Internal server error retrieving scores.',
+      code: 'SERVER_ERROR',
+    });
+  }
+}
+
 module.exports = {
   assignRoundRobin,
   assignManual,
   removeAssignment,
   listAssignments,
   getMyAssignments,
+  submitScores,
+  getScoresByAssignment,
 };

@@ -8,6 +8,8 @@ const {
   removeAssignment,
   listAssignments,
   getMyAssignments,
+  submitScores,
+  getScoresByAssignment,
 } = require('../controllers/judgingController');
 
 // Judge personal queue (accessible by JUDGE, ORGANIZER, ADMIN)
@@ -16,6 +18,21 @@ router.get(
   requireAuth,
   requireRole('JUDGE', 'ORGANIZER', 'ADMIN'),
   getMyAssignments
+);
+
+// Score submission and retrieval (accessible by JUDGE, ORGANIZER, ADMIN)
+router.post(
+  '/scores',
+  requireAuth,
+  requireRole('JUDGE', 'ORGANIZER', 'ADMIN'),
+  submitScores
+);
+
+router.get(
+  '/scores/:assignmentId',
+  requireAuth,
+  requireRole('JUDGE', 'ORGANIZER', 'ADMIN'),
+  getScoresByAssignment
 );
 
 // Admin & Organizer Management Routes
