@@ -10,6 +10,7 @@ const teamRoutes = require('./routes/teamRoutes');
 const submissionRoutes = require('./routes/submissionRoutes');
 const galleryRoutes = require('./routes/galleryRoutes');
 const judgingRoutes = require('./routes/judgingRoutes');
+const leaderboardRoutes = require('./routes/leaderboardRoutes');
 const { uploadDir } = require('./utils/upload');
 
 const app = express();
@@ -38,6 +39,7 @@ app.use('/api/teams', teamRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/judging', judgingRoutes);
+app.use('/api/leaderboard', leaderboardRoutes);
 
 // Serve frontend static files in production if dist exists
 const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');
