@@ -27,7 +27,7 @@ function hasConflictOfInterest(judgeId, submission) {
  * @param {boolean} clearExisting
  * @returns {Promise<{ createdCount: number, totalProjects: number, totalJudges: number, assignments: Array }>}
  */
-async function generateRoundRobinAssignments(eventId, judgesPerProject = 3, clearExisting = false) {
+async function generateRoundRobinAssignments(eventId, judgesPerProject = 3, clearExisting = false, judgeIds = null) {
   // 1. Fetch event, non-draft submissions, and eligible judges
   const event = await prisma.event.findUnique({
     where: { id: eventId },
@@ -63,11 +63,16 @@ async function generateRoundRobinAssignments(eventId, judgesPerProject = 3, clea
     };
   }
 
-  // Fetch all eligible judges (users with role JUDGE, ORGANIZER, or ADMIN)
+  // Fetch eligible judges (users with role JUDGE, ORGANIZER, or ADMIN, filtered by judgeIds if provided)
+  const judgeWhere = {
+    role: { in: ['JUDGE', 'ORGANIZER', 'ADMIN'] },
+  };
+  if (Array.isArray(judgeIds) && judgeIds.length > 0) {
+    judgeWhere.id = { in: judgeIds };
+  }
+
   const judges = await prisma.user.findMany({
-    where: {
-      role: { in: ['JUDGE', 'ORGANIZER', 'ADMIN'] },
-    },
+    where: judgeWhere,
     select: {
       id: true,
       name: true,

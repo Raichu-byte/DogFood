@@ -8,7 +8,7 @@ const { hasConflictOfInterest, generateRoundRobinAssignments } = require('../ser
  */
 async function assignRoundRobin(req, res) {
   try {
-    const { eventId, judgesPerProject = 3, clearExisting = false } = req.body;
+    const { eventId, judgesPerProject = 3, clearExisting = false, judgeIds = null } = req.body;
 
     if (!eventId) {
       return res.status(400).json({
@@ -39,7 +39,8 @@ async function assignRoundRobin(req, res) {
     const result = await generateRoundRobinAssignments(
       eventId,
       parseInt(judgesPerProject, 10) || 3,
-      Boolean(clearExisting)
+      Boolean(clearExisting),
+      Array.isArray(judgeIds) ? judgeIds : null
     );
 
     // Audit log

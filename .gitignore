@@ -70,6 +70,8 @@ backend/prisma/*.db
 backend/prisma/*.db-journal
 
 # Local Uploads & Static Media (Keep placeholder)
+uploads/
+!uploads/.gitkeep
 backend/uploads/*
 !backend/uploads/.gitkeep
 frontend/public/uploads/*
