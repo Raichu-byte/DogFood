@@ -626,6 +626,128 @@ async function getScoresByAssignment(req, res) {
   }
 }
 
+/**
+ * Trigger Z-Score normalization for all completed evaluations in an event
+ * POST /api/judging/normalize
+ * Protected: ORGANIZER, ADMIN
+ */
+async function normalizeScores(req, res) {
+  try {
+    const { eventId } = req.body;
+
+    if (!eventId) {
+      return res.status(400).json({
+        error: 'Validation error: eventId is required.',
+        code: 'VALIDATION_FAILED',
+      });
+    }
+
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+    });
+
+    if (!event) {
+      return res.status(404).json({
+        error: 'Event not found.',
+        code: 'EVENT_NOT_FOUND',
+      });
+    }
+
+    if (req.user.role !== 'ADMIN' && event.organizerId !== req.user.id) {
+      return res.status(403).json({
+        error: 'Forbidden: Only the event organizer or an admin can trigger score normalization.',
+        code: 'FORBIDDEN',
+      });
+    }
+
+    const { calculateEventZScores } = require('../services/normalizationService');
+    const result = await calculateEventZScores(eventId);
+
+    // Audit log
+    await prisma.auditLog.create({
+      data: {
+        eventId,
+        actorId: req.user.id,
+        action: 'SCORES_NORMALIZED',
+        targetResource: 'ProjectScoreSummary',
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+        metadata: JSON.stringify({
+          totalEvaluations: result.totalEvaluations,
+          totalProjects: result.totalProjects,
+        }),
+      },
+    });
+
+    return res.status(200).json({
+      message: 'Scores normalized successfully using Z-Score algorithm.',
+      data: result,
+    });
+  } catch (err) {
+    console.error('[NORMALIZE SCORES ERROR]', err);
+    return res.status(500).json({
+      error: 'Internal server error normalizing scores.',
+      code: 'SERVER_ERROR',
+    });
+  }
+}
+
+/**
+ * Get statistical metrics and judging progress distribution for an event
+ * GET /api/judging/stats/:eventId
+ * Protected: ORGANIZER, ADMIN
+ */
+async function getJudgingStats(req, res) {
+  try {
+    const { eventId } = req.params;
+
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+    });
+
+    if (!event) {
+      return res.status(404).json({
+        error: 'Event not found.',
+        code: 'EVENT_NOT_FOUND',
+      });
+    }
+
+    if (req.user.role !== 'ADMIN' && event.organizerId !== req.user.id) {
+      return res.status(403).json({
+        error: 'Forbidden: Only the event organizer or an admin can view judging statistics.',
+        code: 'FORBIDDEN',
+      });
+    }
+
+    const { calculateEventZScores } = require('../services/normalizationService');
+    const result = await calculateEventZScores(eventId);
+
+    const [totalSubmissions, totalAssignments, completedAssignments] = await Promise.all([
+      prisma.submission.count({ where: { eventId, isDraft: false } }),
+      prisma.judgeAssignment.count({ where: { eventId } }),
+      prisma.judgeAssignment.count({ where: { eventId, status: 'COMPLETED' } }),
+    ]);
+
+    return res.status(200).json({
+      eventId,
+      overview: {
+        totalSubmissions,
+        totalAssignments,
+        completedAssignments,
+        pendingAssignments: totalAssignments - completedAssignments,
+        progressPercent: totalAssignments > 0 ? Math.round((completedAssignments / totalAssignments) * 100) : 0,
+      },
+      normalization: result,
+    });
+  } catch (err) {
+    console.error('[GET JUDGING STATS ERROR]', err);
+    return res.status(500).json({
+      error: 'Internal server error fetching judging statistics.',
+      code: 'SERVER_ERROR',
+    });
+  }
+}
+
 module.exports = {
   assignRoundRobin,
   assignManual,
@@ -634,4 +756,6 @@ module.exports = {
   getMyAssignments,
   submitScores,
   getScoresByAssignment,
+  normalizeScores,
+  getJudgingStats,
 };

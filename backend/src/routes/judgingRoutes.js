@@ -10,6 +10,8 @@ const {
   getMyAssignments,
   submitScores,
   getScoresByAssignment,
+  normalizeScores,
+  getJudgingStats,
 } = require('../controllers/judgingController');
 
 // Judge personal queue (accessible by JUDGE, ORGANIZER, ADMIN)
@@ -33,6 +35,21 @@ router.get(
   requireAuth,
   requireRole('JUDGE', 'ORGANIZER', 'ADMIN'),
   getScoresByAssignment
+);
+
+// Normalization and statistical metrics (accessible by ORGANIZER, ADMIN)
+router.post(
+  '/normalize',
+  requireAuth,
+  requireRole('ORGANIZER', 'ADMIN'),
+  normalizeScores
+);
+
+router.get(
+  '/stats/:eventId',
+  requireAuth,
+  requireRole('ORGANIZER', 'ADMIN'),
+  getJudgingStats
 );
 
 // Admin & Organizer Management Routes
