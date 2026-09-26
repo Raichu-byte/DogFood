@@ -92,14 +92,16 @@ model Track {
 }
 
 model Prize {
-  id          String   @id @default(cuid())
-  eventId     String
-  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  trackId     String?
-  track       Track?   @relation(fields: [trackId], references: [id], onDelete: SetNull)
-  title       String
-  amount      String
-  description String?
+  id                  String      @id @default(cuid())
+  eventId             String
+  event               Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  trackId             String?
+  track               Track?      @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  title               String
+  amount              String
+  description         String?
+  winningSubmissionId String?
+  winningSubmission   Submission? @relation("WonPrizes", fields: [winningSubmissionId], references: [id], onDelete: SetNull)
 
   @@map("prizes")
 }
@@ -160,6 +162,7 @@ model Submission {
   communityVotes   CommunityVote[]
   scoreSummary     ProjectScoreSummary?
   abuseFlags       AbuseFlag[]
+  wonPrizes        Prize[]              @relation("WonPrizes")
 
   @@map("submissions")
 }
