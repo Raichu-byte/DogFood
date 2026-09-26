@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 
+const authRoutes = require('./routes/authRoutes');
+
 const app = express();
 
 app.use(cors());
@@ -16,6 +18,9 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Mount API routes
+app.use('/api/auth', authRoutes);
 
 // Serve frontend static files in production if dist exists
 const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');
