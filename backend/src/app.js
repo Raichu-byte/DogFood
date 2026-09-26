@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 
 const authRoutes = require('./routes/authRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.get('/health', (req, res) => {
 
 // Mount API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Serve frontend static files in production if dist exists
 const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');
