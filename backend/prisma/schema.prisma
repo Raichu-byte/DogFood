@@ -1,0 +1,270 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  VISITOR
+  PARTICIPANT
+  JUDGE
+  ORGANIZER
+  ADMIN
+}
+
+enum EventStatus {
+  DRAFT
+  ACTIVE
+  JUDGING
+  VOTING
+  FINALIZED
+  PUBLISHED
+}
+
+enum TeamRole {
+  LEADER
+  MEMBER
+}
+
+enum AssignmentStatus {
+  PENDING
+  COMPLETED
+}
+
+model User {
+  id               String            @id @default(cuid())
+  email            String            @unique
+  passwordHash     String
+  name             String
+  role             Role              @default(PARTICIPANT)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  createdEvents    Event[]           @relation("CreatedEvents")
+  createdTeams     Team[]            @relation("CreatedTeams")
+  teamMemberships  TeamMember[]
+  judgeAssignments JudgeAssignment[]
+  communityVotes   CommunityVote[]
+  auditLogs        AuditLog[]
+
+  @@map("users")
+}
+
+model Event {
+  id                 String            @id @default(cuid())
+  name               String
+  slug               String            @unique
+  description        String
+  status             EventStatus       @default(ACTIVE)
+  submissionDeadline DateTime
+  judgingDeadline    DateTime
+  votingDeadline     DateTime
+  organizerId        String
+  organizer          User              @relation("CreatedEvents", fields: [organizerId], references: [id], onDelete: Cascade)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  tracks             Track[]
+  prizes             Prize[]
+  rubricCriteria     RubricCriteria[]
+  teams              Team[]
+  submissions        Submission[]
+  judgeAssignments   JudgeAssignment[]
+  communityVotes     CommunityVote[]
+  auditLogs          AuditLog[]
+
+  @@map("events")
+}
+
+model Track {
+  id          String       @id @default(cuid())
+  eventId     String
+  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name        String
+  description String
+  submissions Submission[]
+  prizes      Prize[]
+
+  @@map("tracks")
+}
+
+model Prize {
+  id          String   @id @default(cuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  trackId     String?
+  track       Track?   @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  title       String
+  amount      String
+  description String?
+
+  @@map("prizes")
+}
+
+model Team {
+  id          String       @id @default(cuid())
+  eventId     String
+  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name        String
+  inviteCode  String       @unique
+  creatorId   String
+  creator     User         @relation("CreatedTeams", fields: [creatorId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  members     TeamMember[]
+  submission  Submission?
+
+  @@unique([eventId, name])
+  @@map("teams")
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      TeamRole @default(MEMBER)
+  joinedAt  DateTime @default(now())
+
+  @@unique([teamId, userId])
+  @@map("team_members")
+}
+
+model Submission {
+  id               String               @id @default(cuid())
+  eventId          String
+  event            Event                @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  teamId           String               @unique
+  team             Team                 @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  trackId          String?
+  track            Track?               @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  title            String
+  tagline          String
+  description      String
+  techStack        String               // Stored as JSON array string: ["React", "Express", ...]
+  repoUrl          String?
+  demoUrl          String?
+  videoUrl         String?
+  thumbnailUrl     String?
+  isDraft          Boolean              @default(true)
+  submittedAt      DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  judgeAssignments JudgeAssignment[]
+  communityVotes   CommunityVote[]
+  scoreSummary     ProjectScoreSummary?
+  abuseFlags       AbuseFlag[]
+
+  @@map("submissions")
+}
+
+model RubricCriteria {
+  id          String   @id @default(cuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name        String
+  description String
+  weight      Float    // e.g. 0.25 (sum of all criteria weights should be 1.0)
+  minScore    Float    @default(1.0)
+  maxScore    Float    @default(10.0)
+  createdAt   DateTime @default(now())
+
+  scores      Score[]
+
+  @@map("rubric_criteria")
+}
+
+model JudgeAssignment {
+  id           String           @id @default(cuid())
+  eventId      String
+  event        Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  judgeId      String
+  judge        User             @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+  submissionId String
+  submission   Submission       @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  status       AssignmentStatus @default(PENDING)
+  assignedAt   DateTime         @default(now())
+
+  scores       Score[]
+
+  @@unique([judgeId, submissionId])
+  @@map("judge_assignments")
+}
+
+model Score {
+  id           String          @id @default(cuid())
+  assignmentId String
+  assignment   JudgeAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  criteriaId   String
+  criteria     RubricCriteria  @relation(fields: [criteriaId], references: [id], onDelete: Cascade)
+  scoreValue   Float
+  feedback     String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@unique([assignmentId, criteriaId])
+  @@map("scores")
+}
+
+model ProjectScoreSummary {
+  id                  String     @id @default(cuid())
+  submissionId        String     @unique
+  submission          Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  rawScoreMean        Float      @default(0.0)
+  normalizedZScore    Float      @default(0.0)
+  communityVotesCount Int        @default(0)
+  rank                Int?
+  updatedAt           DateTime   @updatedAt
+
+  @@map("project_score_summaries")
+}
+
+model CommunityVote {
+  id           String     @id @default(cuid())
+  eventId      String
+  event        Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  voterId      String
+  voter        User       @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  submissionId String
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([eventId, voterId])
+  @@map("community_votes")
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  eventId        String?
+  event          Event?   @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  actorId        String?
+  actor          User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action         String
+  targetResource String
+  targetId       String?
+  ipAddress      String?
+  userAgent      String?
+  metadata       String?  // JSON string
+  timestamp      DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+model AbuseFlag {
+  id           String      @id @default(cuid())
+  submissionId String?
+  submission   Submission? @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  flagType     String      // "DUPLICATE_SUBMISSION", "SUSPICIOUS_VOTING"
+  severity     String      // "LOW", "MEDIUM", "HIGH"
+  reason       String
+  resolved     Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+
+  @@map("abuse_flags")
+}
