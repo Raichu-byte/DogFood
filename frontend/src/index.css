@@ -106,29 +106,29 @@ body {
   }
 }
 
-@keyframes signalTravelGrand {
+@keyframes signalTravelClean {
   0% {
     transform: translateX(0px);
     opacity: 0.3;
   }
-  22% {
-    transform: translateX(290px);
+  25% {
+    transform: translateX(300px);
     opacity: 1;
   }
-  48% {
-    transform: translateX(580px);
+  50% {
+    transform: translateX(600px);
     opacity: 1;
   }
-  72% {
-    transform: translateX(870px);
+  75% {
+    transform: translateX(900px);
     opacity: 1;
   }
-  92% {
-    transform: translateX(1160px);
+  90% {
+    transform: translateX(1200px);
     opacity: 1;
   }
-  97% {
-    transform: translateX(1180px);
+  96% {
+    transform: translateX(1220px);
     opacity: 0.2;
   }
   100% {
@@ -137,8 +137,8 @@ body {
   }
 }
 
-.anim-signal-point-grand {
-  animation: signalTravelGrand 19.33s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+.anim-signal-clean {
+  animation: signalTravelClean 19.33s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 /* 2. Left Geometry Expansion & Drift (Phase A -> Phase B -> Loop) */
