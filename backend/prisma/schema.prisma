@@ -324,18 +324,24 @@ model Comment {
 }
 
 model Announcement {
-  id        String   @id @default(cuid())
-  eventId   String
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  authorId  String
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  title     String
-  content   String
-  isPinned  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String    @id @default(cuid())
+  eventId        String
+  event          Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  authorId       String
+  author         User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  title          String
+  content        String
+  priority       String    @default("INFO") // "INFO", "IMPORTANT", "CRITICAL_ALERT"
+  targetAudience String    @default("ALL")  // "ALL", "ORGANIZERS_ONLY", "JUDGES_ONLY", "PARTICIPANTS_ONLY"
+  isPinned       Boolean   @default(false)
+  isBannerActive Boolean   @default(false)
+  expiresAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([eventId])
+  @@index([priority])
+  @@index([isBannerActive])
   @@map("announcements")
 }
 

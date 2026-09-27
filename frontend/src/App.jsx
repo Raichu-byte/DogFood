@@ -48,11 +48,17 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token') || '');
 
-  // Announcements state
+  // Announcements & Broadcast Manager state (Phase 20)
   const [announcements, setAnnouncements] = useState([]);
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcementContent, setAnnouncementContent] = useState('');
   const [announcementPinned, setAnnouncementPinned] = useState(false);
+  const [announcementPriority, setAnnouncementPriority] = useState('INFO');
+  const [announcementAudience, setAnnouncementAudience] = useState('ALL');
+  const [announcementIsBanner, setAnnouncementIsBanner] = useState(false);
+  const [activeBanner, setActiveBanner] = useState(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [broadcastFilterPriority, setBroadcastFilterPriority] = useState('ALL');
 
   // Discussions & Threaded Comments state
   const [discussionProject, setDiscussionProject] = useState(null);
@@ -96,7 +102,7 @@ export default function App() {
     setTimeout(() => setToastMessage(''), 4000);
   };
 
-  // 1. Initial Load: Health & Event
+  // 1. Initial Load: Health, Event & Active Banner
   useEffect(() => {
     fetch('/health')
       .then(res => res.json())
@@ -104,6 +110,7 @@ export default function App() {
       .catch(() => setHealth({ status: 'offline' }));
 
     fetchEventData();
+    fetchActiveBanner();
   }, []);
 
   // 2. Fetch current user profile if token exists
@@ -206,6 +213,25 @@ export default function App() {
           console.error(err);
         }
       });
+
+      actSource.addEventListener('BROADCAST_CREATED', (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+          if (payload.data) {
+            fetchAnnouncements();
+            if (payload.data.isBannerActive) {
+              fetchActiveBanner();
+            }
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      });
+
+      actSource.addEventListener('BANNER_STATE_CHANGED', () => {
+        fetchActiveBanner();
+        fetchAnnouncements();
+      });
     } catch (err) {
       console.error('[Activity SSE Error]', err);
     }
@@ -265,9 +291,26 @@ export default function App() {
       .catch(err => console.error(err));
   };
 
+  const fetchActiveBanner = () => {
+    fetch('/api/events/dogfood-2026/broadcasts/active-banner')
+      .then(res => res.json())
+      .then(data => {
+        if (data.banner) {
+          setActiveBanner(data.banner);
+        } else {
+          setActiveBanner(null);
+        }
+      })
+      .catch(() => setActiveBanner(null));
+  };
+
   const fetchAnnouncements = () => {
     setLoading(true);
-    fetch('/api/events/dogfood-2026/announcements')
+    let url = '/api/events/dogfood-2026/announcements';
+    if (broadcastFilterPriority && broadcastFilterPriority !== 'ALL') {
+      url += `?priority=${broadcastFilterPriority}`;
+    }
+    fetch(url)
       .then(res => res.json())
       .then(data => {
         setAnnouncements(data.announcements || []);
@@ -297,21 +340,49 @@ export default function App() {
         title: announcementTitle,
         content: announcementContent,
         isPinned: announcementPinned,
+        priority: announcementPriority,
+        targetAudience: announcementAudience,
+        isBannerActive: announcementIsBanner
       })
     })
       .then(res => res.json())
       .then(data => {
         if (data.announcement) {
-          showToast('📢 Announcement broadcasted!');
+          showToast(`📢 ${data.announcement.priority} broadcast dispatched!`);
           setAnnouncementTitle('');
           setAnnouncementContent('');
           setAnnouncementPinned(false);
+          setAnnouncementPriority('INFO');
+          setAnnouncementAudience('ALL');
+          setAnnouncementIsBanner(false);
           fetchAnnouncements();
+          fetchActiveBanner();
         } else {
           showToast(`⚠️ ${data.error}`);
         }
       })
       .catch(() => showToast('Network error creating announcement.'));
+  };
+
+  const handleToggleBanner = (announcementId) => {
+    if (!token) return;
+    fetch(`/api/announcements/${announcementId}/toggle-banner`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.announcement) {
+          showToast(`⚡ Banner state: ${data.announcement.isBannerActive ? 'ACTIVATED' : 'DEACTIVATED'}`);
+          fetchAnnouncements();
+          fetchActiveBanner();
+        } else {
+          showToast(`⚠️ ${data.error}`);
+        }
+      })
+      .catch(() => showToast('Network error toggling banner.'));
   };
 
   const fetchActivities = () => {
@@ -747,6 +818,51 @@ export default function App() {
         <div className="fixed bottom-6 right-6 z-50 bg-[#0d0d0d] border border-[#a98be8]/50 text-[#f1f0ed] px-5 py-3 shadow-2xl flex items-center space-x-3 font-mono text-xs">
           <span className="w-2 h-2 rounded-full bg-[#9eea9a] animate-ping"></span>
           <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Top Banner Takeover (Phase 20 Broadcast System) */}
+      {activeBanner && !bannerDismissed && (
+        <div className={`w-full py-2.5 px-6 border-b z-50 transition-all ${
+          activeBanner.priority === 'CRITICAL_ALERT'
+            ? 'bg-[#150a0a] border-red-500/40 text-[#f1f0ed]'
+            : activeBanner.priority === 'IMPORTANT'
+            ? 'bg-[#120d1c] border-[#a98be8]/50 text-[#f1f0ed]'
+            : 'bg-[#0f0f12] border-[#242326] text-[#f1f0ed]'
+        }`}>
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 text-xs font-mono">
+            <div className="flex items-center space-x-3 overflow-hidden">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${
+                activeBanner.priority === 'CRITICAL_ALERT' ? 'bg-red-400 animate-ping' : 'bg-[#9eea9a] animate-pulse'
+              }`}></span>
+              <span className={`px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase shrink-0 border ${
+                activeBanner.priority === 'CRITICAL_ALERT'
+                  ? 'border-red-500/40 bg-red-500/10 text-red-300'
+                  : activeBanner.priority === 'IMPORTANT'
+                  ? 'border-[#a98be8]/40 bg-[#a98be8]/10 text-[#a98be8]'
+                  : 'border-neutral-700 bg-neutral-800 text-neutral-300'
+              }`}>
+                {activeBanner.priority}
+              </span>
+              <span className="font-bold text-[#f1f0ed] shrink-0">{activeBanner.title}:</span>
+              <span className="text-[#c8c6c3] truncate">{activeBanner.content}</span>
+            </div>
+            <div className="flex items-center space-x-3 shrink-0">
+              <button
+                onClick={() => setActiveTab('announcements')}
+                className="text-[10px] text-[#a98be8] hover:text-[#caaefc] underline uppercase tracking-wider font-bold"
+              >
+                VIEW FULL BROADCAST
+              </button>
+              <button
+                onClick={() => setBannerDismissed(true)}
+                className="p-1 hover:text-white text-neutral-400 transition"
+                title="Dismiss Banner"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1246,86 +1362,211 @@ export default function App() {
         )}
 
         {/* ============================================================ */}
-        {/* TAB 5: EVENT ANNOUNCEMENTS */}
+        {/* TAB 5: ORGANIZER BROADCASTS & MULTI-CHANNEL ALERTS (Phase 20) */}
         {/* ============================================================ */}
         {activeTab === 'announcements' && (
           <div className="space-y-8">
-            <div className="border-b border-[#242326] pb-6">
-              <h2 className="text-xl font-bold tracking-wider text-[#f1f0ed] uppercase flex items-center space-x-2">
-                <Megaphone className="w-5 h-5 text-[#a98be8]" />
-                <span>OFFICIAL EVENT ANNOUNCEMENTS</span>
-              </h2>
-              <p className="text-xs text-[#c8c6c3] mt-1">
-                Broadcasts and updates directly from tournament organizers.
-              </p>
+            <div className="border-b border-[#242326] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold tracking-wider text-[#f1f0ed] uppercase flex items-center space-x-2">
+                  <Radio className="w-5 h-5 text-[#a98be8]" />
+                  <span>ORGANIZER BROADCAST SYSTEM & ALERTS</span>
+                </h2>
+                <p className="text-xs text-[#c8c6c3] mt-1">
+                  Targeted broadcasts, multi-channel alert dispatches, and active critical banner takeovers.
+                </p>
+              </div>
+
+              {/* Priority Filter */}
+              <div className="flex items-center space-x-2">
+                <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-mono">PRIORITY:</span>
+                <div className="flex bg-[#0d0d0d] border border-[#242326] p-0.5">
+                  {['ALL', 'CRITICAL_ALERT', 'IMPORTANT', 'INFO'].map(p => (
+                    <button
+                      key={p}
+                      onClick={() => setBroadcastFilterPriority(p)}
+                      className={`px-3 py-1 text-[10px] font-mono tracking-wider uppercase transition ${
+                        broadcastFilterPriority === p
+                          ? 'bg-[#242326] text-[#f1f0ed] font-bold'
+                          : 'text-neutral-500 hover:text-[#c8c6c3]'
+                      }`}
+                    >
+                      {p.replace('_', ' ')}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Organizer composer */}
             {(currentUser?.role === 'ORGANIZER' || currentUser?.role === 'ADMIN') && (
               <div className="border border-[#a98be8]/40 bg-[#0d0c12] p-6 space-y-4">
-                <p className="text-xs font-mono font-bold text-[#a98be8] uppercase tracking-wider">
-                  BROADCAST NEW ANNOUNCEMENT
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-mono font-bold text-[#a98be8] uppercase tracking-wider flex items-center space-x-2">
+                    <Megaphone className="w-4 h-4" />
+                    <span>DISPATCH NEW BROADCAST</span>
+                  </p>
+                  <span className="text-[10px] font-mono text-neutral-500 uppercase">
+                    ORGANIZER / ADMIN CONSOLE
+                  </span>
+                </div>
                 <form onSubmit={handleCreateAnnouncement} className="space-y-4">
-                  <input
-                    type="text"
-                    placeholder="Announcement title..."
-                    value={announcementTitle}
-                    onChange={(e) => setAnnouncementTitle(e.target.value)}
-                    className="w-full bg-[#090909] border border-[#242326] px-4 py-2.5 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8]"
-                  />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input
+                      type="text"
+                      placeholder="Broadcast headline..."
+                      value={announcementTitle}
+                      onChange={(e) => setAnnouncementTitle(e.target.value)}
+                      className="md:col-span-1 bg-[#090909] border border-[#242326] px-4 py-2.5 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8]"
+                    />
+                    <div>
+                      <select
+                        value={announcementPriority}
+                        onChange={(e) => setAnnouncementPriority(e.target.value)}
+                        className="w-full bg-[#090909] border border-[#242326] px-4 py-2.5 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8]"
+                      >
+                        <option value="INFO">PRIORITY: INFO</option>
+                        <option value="IMPORTANT">PRIORITY: IMPORTANT</option>
+                        <option value="CRITICAL_ALERT">PRIORITY: CRITICAL ALERT</option>
+                      </select>
+                    </div>
+                    <div>
+                      <select
+                        value={announcementAudience}
+                        onChange={(e) => setAnnouncementAudience(e.target.value)}
+                        className="w-full bg-[#090909] border border-[#242326] px-4 py-2.5 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8]"
+                      >
+                        <option value="ALL">AUDIENCE: ALL ATTENDEES</option>
+                        <option value="PARTICIPANTS_ONLY">AUDIENCE: PARTICIPANTS ONLY</option>
+                        <option value="JUDGES_ONLY">AUDIENCE: JUDGES ONLY</option>
+                        <option value="ORGANIZERS_ONLY">AUDIENCE: ORGANIZERS ONLY</option>
+                      </select>
+                    </div>
+                  </div>
                   <textarea
                     rows={3}
-                    placeholder="Announcement message content..."
+                    placeholder="Broadcast message content and instructions..."
                     value={announcementContent}
                     onChange={(e) => setAnnouncementContent(e.target.value)}
                     className="w-full bg-[#090909] border border-[#242326] px-4 py-2.5 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8]"
                   />
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center space-x-2 text-xs text-[#c8c6c3] cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={announcementPinned}
-                        onChange={(e) => setAnnouncementPinned(e.target.checked)}
-                        className="accent-[#a98be8]"
-                      />
-                      <span>Pin Announcement to Top</span>
-                    </label>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-[#1a191d]">
+                    <div className="flex items-center space-x-6">
+                      <label className="flex items-center space-x-2 text-xs text-[#c8c6c3] cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={announcementPinned}
+                          onChange={(e) => setAnnouncementPinned(e.target.checked)}
+                          className="accent-[#a98be8]"
+                        />
+                        <span>Pin to Top</span>
+                      </label>
+                      <label className="flex items-center space-x-2 text-xs text-[#c8c6c3] cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={announcementIsBanner}
+                          onChange={(e) => setAnnouncementIsBanner(e.target.checked)}
+                          className="accent-[#a98be8]"
+                        />
+                        <span className="text-[#a98be8] font-bold">⚡ Activate Top Banner Takeover</span>
+                      </label>
+                    </div>
                     <button
                       type="submit"
-                      className="px-6 py-2.5 bg-[#bca1ee] hover:bg-[#caaefc] text-[#161218] font-bold text-xs tracking-wider uppercase flex items-center space-x-1.5"
+                      className="px-6 py-2.5 bg-[#bca1ee] hover:bg-[#caaefc] text-[#161218] font-bold text-xs tracking-wider uppercase flex items-center justify-center space-x-1.5 shrink-0"
                     >
                       <Send className="w-3.5 h-3.5" />
-                      <span>BROADCAST</span>
+                      <span>DISPATCH BROADCAST</span>
                     </button>
                   </div>
                 </form>
               </div>
             )}
 
-            {/* Feed */}
-            {announcements.map((a) => (
-              <div
-                key={a.id}
-                className={`p-6 border ${a.isPinned ? 'border-[#a98be8]/50 bg-[#100f16]' : 'border-[#242326] bg-[#0c0c0e]'} space-y-3`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-2">
-                    {a.isPinned && (
-                      <span className="px-2 py-0.5 text-[9px] font-mono font-bold bg-[#a98be8]/10 text-[#a98be8] border border-[#a98be8]/30 uppercase">
-                        PINNED
+            {/* Broadcasts Feed */}
+            <div className="space-y-4">
+              {announcements
+                .filter(a => broadcastFilterPriority === 'ALL' || a.priority === broadcastFilterPriority)
+                .map((a) => (
+                  <div
+                    key={a.id}
+                    className={`p-6 border transition-all ${
+                      a.priority === 'CRITICAL_ALERT'
+                        ? 'border-red-500/50 bg-[#140b0d]'
+                        : a.isPinned
+                        ? 'border-[#a98be8]/50 bg-[#100f16]'
+                        : 'border-[#242326] bg-[#0c0c0e]'
+                    } space-y-4`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Priority Badge */}
+                        <span className={`px-2 py-0.5 text-[9px] font-mono font-bold uppercase border ${
+                          a.priority === 'CRITICAL_ALERT'
+                            ? 'border-red-500/50 bg-red-500/10 text-red-400'
+                            : a.priority === 'IMPORTANT'
+                            ? 'border-[#a98be8]/50 bg-[#a98be8]/10 text-[#a98be8]'
+                            : 'border-neutral-700 bg-neutral-800 text-neutral-400'
+                        }`}>
+                          {a.priority || 'INFO'}
+                        </span>
+
+                        {/* Audience Badge */}
+                        <span className="px-2 py-0.5 text-[9px] font-mono border border-neutral-700 bg-neutral-900/50 text-neutral-400 uppercase">
+                          TARGET: {a.targetAudience?.replace('_', ' ') || 'ALL'}
+                        </span>
+
+                        {/* Pinned Badge */}
+                        {a.isPinned && (
+                          <span className="px-2 py-0.5 text-[9px] font-mono font-bold bg-[#a98be8]/10 text-[#a98be8] border border-[#a98be8]/30 uppercase flex items-center space-x-1">
+                            <Pin className="w-2.5 h-2.5" />
+                            <span>PINNED</span>
+                          </span>
+                        )}
+
+                        {/* Banner Active Badge */}
+                        {a.isBannerActive && (
+                          <span className="px-2 py-0.5 text-[9px] font-mono font-bold bg-[#9eea9a]/10 text-[#9eea9a] border border-[#9eea9a]/30 uppercase flex items-center space-x-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#9eea9a] animate-pulse"></span>
+                            <span>BANNER TAKEOVER ACTIVE</span>
+                          </span>
+                        )}
+
+                        <h3 className="text-base font-bold text-[#f1f0ed] ml-1">{a.title}</h3>
+                      </div>
+                      <span className="text-[10px] text-neutral-500 shrink-0 font-mono">
+                        {new Date(a.createdAt).toLocaleDateString()} · {new Date(a.createdAt).toLocaleTimeString()}
                       </span>
-                    )}
-                    <h3 className="text-base font-bold text-[#f1f0ed]">{a.title}</h3>
+                    </div>
+
+                    <p className="text-xs text-[#c8c6c3] leading-relaxed whitespace-pre-wrap">{a.content}</p>
+
+                    <div className="pt-3 border-t border-[#1a191d] flex items-center justify-between text-[10px] text-neutral-500 font-mono">
+                      <span>Posted by {a.author?.name || 'Tournament Director'} ({a.author?.role || 'ORGANIZER'})</span>
+
+                      {/* Organizer Banner Toggle Control */}
+                      {(currentUser?.role === 'ORGANIZER' || currentUser?.role === 'ADMIN') && (
+                        <button
+                          onClick={() => handleToggleBanner(a.id)}
+                          className={`px-3 py-1 text-[10px] uppercase font-bold tracking-wider border transition ${
+                            a.isBannerActive
+                              ? 'border-red-500/40 text-red-400 hover:bg-red-500/10'
+                              : 'border-[#a98be8]/40 text-[#a98be8] hover:bg-[#a98be8]/10'
+                          }`}
+                        >
+                          {a.isBannerActive ? '✕ Deactivate Banner Takeover' : '⚡ Activate Banner Takeover'}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <span className="text-[10px] text-neutral-500">{new Date(a.createdAt).toLocaleDateString()}</span>
+                ))}
+
+              {announcements.filter(a => broadcastFilterPriority === 'ALL' || a.priority === broadcastFilterPriority).length === 0 && (
+                <div className="p-12 border border-dashed border-[#242326] text-center text-xs text-neutral-500">
+                  No broadcasts found for priority {broadcastFilterPriority}.
                 </div>
-                <p className="text-xs text-[#c8c6c3] leading-relaxed whitespace-pre-wrap">{a.content}</p>
-                <div className="pt-2 border-t border-[#1a191d] text-[10px] text-neutral-500">
-                  Posted by {a.author?.name || 'Organizer'}
-                </div>
-              </div>
-            ))}
+              )}
+            </div>
           </div>
         )}
 
