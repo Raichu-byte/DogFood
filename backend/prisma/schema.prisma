@@ -70,6 +70,7 @@ model User {
   comments         Comment[]
   announcements    Announcement[]
   joinRequests     JoinRequest[]     @relation("UserJoinRequests")
+  notifications    Notification[]
 
   @@map("users")
 }
@@ -354,6 +355,24 @@ model JoinRequest {
   @@index([teamId])
   @@index([userId])
   @@map("join_requests")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String    // "ANNOUNCEMENT", "TEAM_INVITE", "JOIN_REQUEST", "COMMENT_REPLY", "SUBMISSION_UPDATE", "SYSTEM"
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean   @default(false)
+  metadata  String?   // JSON string
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
 }
 
 

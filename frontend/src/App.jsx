@@ -25,7 +25,12 @@ import {
   Trash2,
   CornerDownRight,
   UserCheck,
-  UserPlus
+  UserPlus,
+  Bell,
+  Radio,
+  Activity,
+  CheckCheck,
+  X
 } from 'lucide-react';
 import KineticHero from './components/KineticHero';
 
@@ -62,6 +67,14 @@ export default function App() {
   const [hackerSkillFilter, setHackerSkillFilter] = useState('');
   const [applyMessage, setApplyMessage] = useState('');
   const [selectedTeamForApply, setSelectedTeamForApply] = useState(null);
+
+  // In-App Notification Center & Activity Feed state (Phase 19)
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotificationDrawer, setShowNotificationDrawer] = useState(false);
+  const [notificationFilter, setNotificationFilter] = useState('all'); // 'all', 'unread'
+  const [activities, setActivities] = useState([]);
+  const [activityFilter, setActivityFilter] = useState('ALL');
 
   // Auth Modal state
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -117,6 +130,7 @@ export default function App() {
   useEffect(() => {
     if (activeTab === 'gallery') fetchGallery();
     if (activeTab === 'leaderboard') fetchLeaderboard();
+    if (activeTab === 'activity') fetchActivities();
     if (activeTab === 'announcements') fetchAnnouncements();
     if (activeTab === 'hackers') {
       fetchHackers();
@@ -125,6 +139,81 @@ export default function App() {
     if (activeTab === 'judging') fetchJudgingQueue();
     if (activeTab === 'overview') fetchWinners();
   }, [activeTab, leaderboardMode, selectedTrack, searchQuery, hackerSkillFilter, token]);
+
+  // 4. Real-time In-App Notification Center SSE Stream
+  useEffect(() => {
+    if (!token) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+
+    fetchNotifications();
+
+    let eventSource;
+    try {
+      eventSource = new EventSource(`/api/notifications/stream?token=${token}`);
+      
+      eventSource.addEventListener('NOTIFICATION_RECEIVED', (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+          if (payload.data) {
+            setNotifications(prev => [payload.data, ...prev]);
+            setUnreadCount(prev => prev + 1);
+            showToast(`🔔 ${payload.data.title}: ${payload.data.message}`);
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      });
+
+      eventSource.addEventListener('NOTIFICATION_READ', (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+          if (payload.data) {
+            setUnreadCount(payload.data.unreadCount || 0);
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      });
+
+      eventSource.addEventListener('NOTIFICATIONS_ALL_READ', () => {
+        setUnreadCount(0);
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      });
+    } catch (err) {
+      console.error('[Notification SSE Error]', err);
+    }
+
+    return () => {
+      if (eventSource) eventSource.close();
+    };
+  }, [token]);
+
+  // 5. Real-time Activity Stream SSE Listener
+  useEffect(() => {
+    let actSource;
+    try {
+      actSource = new EventSource('/api/activity/stream');
+      actSource.addEventListener('ACTIVITY_LOGGED', (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+          if (payload.data) {
+            setActivities(prev => [payload.data, ...prev.slice(0, 49)]);
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      });
+    } catch (err) {
+      console.error('[Activity SSE Error]', err);
+    }
+
+    return () => {
+      if (actSource) actSource.close();
+    };
+  }, []);
 
   const fetchEventData = () => {
     fetch('/api/events/dogfood-2026')
@@ -223,6 +312,78 @@ export default function App() {
         }
       })
       .catch(() => showToast('Network error creating announcement.'));
+  };
+
+  const fetchActivities = () => {
+    fetch('/api/activity/feed?limit=50')
+      .then(res => res.json())
+      .then(data => {
+        if (data.activities) setActivities(data.activities);
+      })
+      .catch(err => console.error(err));
+  };
+
+  const fetchNotifications = () => {
+    if (!token) return;
+    fetch('/api/notifications?limit=50', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.notifications) {
+          setNotifications(data.notifications);
+          setUnreadCount(data.unreadCount || 0);
+        }
+      })
+      .catch(err => console.error(err));
+  };
+
+  const handleMarkNotifRead = (id) => {
+    if (!token) return;
+    fetch(`/api/notifications/${id}/read`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.id) {
+          setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+          setUnreadCount(prev => Math.max(0, prev - 1));
+        }
+      })
+      .catch(console.error);
+  };
+
+  const handleMarkAllNotifsRead = () => {
+    if (!token) return;
+    fetch('/api/notifications/read-all', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        setUnreadCount(0);
+        showToast('All notifications marked as read.');
+      })
+      .catch(console.error);
+  };
+
+  const handleDeleteNotif = (id) => {
+    if (!token) return;
+    fetch(`/api/notifications/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        const target = notifications.find(n => n.id === id);
+        if (target && !target.isRead) {
+          setUnreadCount(prev => Math.max(0, prev - 1));
+        }
+        setNotifications(prev => prev.filter(n => n.id !== id));
+      })
+      .catch(console.error);
   };
 
   const fetchHackers = () => {
@@ -573,6 +734,7 @@ export default function App() {
     { id: 'overview', label: 'OVERVIEW' },
     { id: 'gallery', label: 'GALLERY' },
     { id: 'leaderboard', label: 'LEADERBOARD' },
+    { id: 'activity', label: 'ACTIVITY FEED' },
     { id: 'announcements', label: 'ANNOUNCEMENTS' },
     { id: 'hackers', label: 'HACKER DIRECTORY' },
     { id: 'judging', label: 'JUDGING' },
@@ -625,6 +787,22 @@ export default function App() {
               <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${health?.status === 'ok' ? 'bg-[#9eea9a]' : 'bg-rose-400'}`}></span>
               {health?.status === 'ok' ? 'SYSTEM: ONLINE' : 'SYSTEM: OFFLINE'}
             </span>
+
+            {/* In-App Notification Center Bell */}
+            {currentUser && (
+              <button
+                onClick={() => setShowNotificationDrawer(!showNotificationDrawer)}
+                className="relative p-2 border border-[#242326] hover:border-[#a98be8] bg-[#0d0d0d] text-[#c8c6c3] hover:text-[#f1f0ed] transition"
+                title="Open Notification Center"
+              >
+                <Bell className="w-4 h-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 px-1.5 py-0.2 bg-[#bca1ee] text-[#161218] text-[9px] font-bold rounded-none animate-pulse">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+            )}
 
             {currentUser ? (
               <div className="flex items-center space-x-3 border border-[#242326] px-3 py-1.5 bg-[#0d0d0d]">
@@ -977,7 +1155,98 @@ export default function App() {
         )}
 
         {/* ============================================================ */}
-        {/* TAB 4: EVENT ANNOUNCEMENTS */}
+        {/* TAB 4: REAL-TIME ACTIVITY FEED (Phase 19) */}
+        {/* ============================================================ */}
+        {activeTab === 'activity' && (
+          <div className="space-y-8">
+            <div className="border-b border-[#242326] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold tracking-wider text-[#f1f0ed] uppercase flex items-center space-x-2">
+                  <Activity className="w-5 h-5 text-[#a98be8]" />
+                  <span>ACTIVITY TIMELINE // LIVE AUDIT STREAM</span>
+                </h2>
+                <p className="text-xs text-[#c8c6c3] mt-1">
+                  Real-time immutable ledger of platform events, squad formations, shipments, and evaluations.
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-1.5 px-3 py-1.5 border border-[#242326] bg-[#0d0d0d] text-[10px] text-[#9eea9a]">
+                  <Radio className="w-3.5 h-3.5 animate-pulse" />
+                  <span>LIVE SSE BEACON</span>
+                </div>
+                <button
+                  onClick={fetchActivities}
+                  className="p-1.5 border border-[#242326] hover:border-[#a98be8] text-neutral-400 hover:text-white transition"
+                  title="Refresh activity feed"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex flex-wrap gap-2">
+              {['ALL', 'SUBMISSION_SHIPPED', 'TEAM_CREATED', 'SCORE_SUBMITTED', 'ANNOUNCEMENT_CREATED', 'EVENT_CREATED'].map((filterKey) => (
+                <button
+                  key={filterKey}
+                  onClick={() => setActivityFilter(filterKey)}
+                  className={`px-3 py-1 text-[10px] font-mono tracking-wider transition uppercase ${
+                    activityFilter === filterKey
+                      ? 'bg-[#bca1ee] text-[#161218] font-bold'
+                      : 'border border-[#242326] text-[#c8c6c3] hover:text-[#f1f0ed] bg-[#0c0c0e]'
+                  }`}
+                >
+                  {filterKey.replace(/_/g, ' ')}
+                </button>
+              ))}
+            </div>
+
+            {/* Activity Stream List */}
+            <div className="space-y-3">
+              {activities
+                .filter(act => activityFilter === 'ALL' || act.action === activityFilter)
+                .map((act) => (
+                  <div
+                    key={act.id}
+                    className="p-4 border border-[#242326] bg-[#0c0c0e] hover:border-[#3a393b] transition flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="flex items-start md:items-center space-x-3">
+                      <span className="w-2 h-2 rounded-full bg-[#9eea9a] mt-1.5 md:mt-0 flex-shrink-0"></span>
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-bold text-[#f1f0ed]">{act.actor?.name || 'System'}</span>
+                          <span className="text-[9px] px-1.5 py-0.2 font-mono uppercase bg-[#1f1e24] text-[#a98be8] border border-[#2d2b33]">
+                            {act.actor?.role || 'SYSTEM'}
+                          </span>
+                          <span className="text-neutral-500 font-mono text-[11px]">—</span>
+                          <span className="font-mono text-[#a98be8] font-semibold">{act.action}</span>
+                        </div>
+                        {act.metadata && Object.keys(act.metadata).length > 0 && (
+                          <p className="text-[11px] text-neutral-400 mt-1 font-mono">
+                            {JSON.stringify(act.metadata)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-[10px] font-mono text-neutral-500 flex-shrink-0">
+                      {new Date(act.timestamp).toLocaleTimeString()} · {new Date(act.timestamp).toLocaleDateString()}
+                    </div>
+                  </div>
+                ))}
+
+              {activities.filter(act => activityFilter === 'ALL' || act.action === activityFilter).length === 0 && (
+                <div className="p-12 border border-dashed border-[#242326] text-center text-xs text-neutral-500">
+                  Zero matching audit events recorded yet.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* TAB 5: EVENT ANNOUNCEMENTS */}
         {/* ============================================================ */}
         {activeTab === 'announcements' && (
           <div className="space-y-8">
@@ -1409,6 +1678,143 @@ export default function App() {
                 SUBMIT APPLICATION
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* IN-APP NOTIFICATION CENTER MODAL / DRAWER (Phase 19) */}
+      {/* ============================================================ */}
+      {showNotificationDrawer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#0d0d0d] border border-[#242326] max-w-lg w-full p-6 space-y-5 shadow-2xl relative max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-[#242326] pb-4">
+              <div className="flex items-center space-x-2">
+                <Bell className="w-4 h-4 text-[#a98be8]" />
+                <h3 className="text-sm font-bold tracking-wider text-[#f1f0ed] uppercase">
+                  NOTIFICATIONS // INBOX
+                </h3>
+                {unreadCount > 0 && (
+                  <span className="px-1.5 py-0.2 text-[9px] bg-[#bca1ee] text-[#161218] font-bold">
+                    {unreadCount} NEW
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => setShowNotificationDrawer(false)}
+                className="text-neutral-500 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Filter & Global Actions */}
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setNotificationFilter('all')}
+                  className={`px-2.5 py-1 text-[10px] font-mono uppercase transition ${
+                    notificationFilter === 'all'
+                      ? 'bg-[#bca1ee] text-[#161218] font-bold'
+                      : 'border border-[#242326] text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  ALL ({notifications.length})
+                </button>
+                <button
+                  onClick={() => setNotificationFilter('unread')}
+                  className={`px-2.5 py-1 text-[10px] font-mono uppercase transition ${
+                    notificationFilter === 'unread'
+                      ? 'bg-[#bca1ee] text-[#161218] font-bold'
+                      : 'border border-[#242326] text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  UNREAD ({unreadCount})
+                </button>
+              </div>
+
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAllNotifsRead}
+                  className="text-[10px] text-[#a98be8] hover:text-[#caaefc] flex items-center space-x-1"
+                >
+                  <CheckCheck className="w-3 h-3" />
+                  <span>Mark all as read</span>
+                </button>
+              )}
+            </div>
+
+            {/* Notifications Scrollable List */}
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1 divide-y divide-[#1a191d]">
+              {notifications
+                .filter(n => notificationFilter === 'all' || !n.isRead)
+                .map((notif) => (
+                  <div
+                    key={notif.id}
+                    className={`pt-3 first:pt-0 space-y-2 ${!notif.isRead ? 'bg-[#121118]/40 p-3 border border-[#a98be8]/20' : ''}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center space-x-2">
+                        {!notif.isRead && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#9eea9a] flex-shrink-0"></span>
+                        )}
+                        <span className="text-[9px] px-1.5 py-0.2 font-mono uppercase bg-[#1f1e24] text-[#a98be8] border border-[#2d2b33]">
+                          {notif.type}
+                        </span>
+                        <h4 className="text-xs font-bold text-[#f1f0ed]">{notif.title}</h4>
+                      </div>
+                      <span className="text-[9px] text-neutral-500 font-mono flex-shrink-0">
+                        {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-[#c8c6c3] leading-relaxed pl-3.5">
+                      {notif.message}
+                    </p>
+
+                    <div className="flex items-center justify-between pt-1 pl-3.5 text-[10px] font-mono text-neutral-500">
+                      {notif.link ? (
+                        <button
+                          onClick={() => {
+                            setShowNotificationDrawer(false);
+                            if (notif.link.includes('announcements')) setActiveTab('announcements');
+                            if (notif.link.includes('matchmaking')) setActiveTab('hackers');
+                          }}
+                          className="text-[#a98be8] hover:underline flex items-center space-x-1"
+                        >
+                          <span>View Details</span>
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </button>
+                      ) : <span></span>}
+
+                      <div className="flex items-center space-x-3">
+                        {!notif.isRead && (
+                          <button
+                            onClick={() => handleMarkNotifRead(notif.id)}
+                            className="hover:text-[#9eea9a] transition"
+                            title="Mark as read"
+                          >
+                            Mark read
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteNotif(notif.id)}
+                          className="hover:text-rose-400 transition"
+                          title="Dismiss notification"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+              {notifications.filter(n => notificationFilter === 'all' || !n.isRead).length === 0 && (
+                <div className="p-8 border border-dashed border-[#242326] text-center text-xs text-neutral-500">
+                  Zero notifications to display.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -16,6 +16,8 @@ const commentRoutes = require('./routes/commentRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
 const realtimeRoutes = require('./routes/realtimeRoutes');
 const matchmakingRoutes = require('./routes/matchmakingRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const activityRoutes = require('./routes/activityRoutes');
 const { uploadDir } = require('./utils/upload');
 
 const app = express();
@@ -46,6 +48,8 @@ app.use('/api/gallery', galleryRoutes);
 app.use('/api/judging', judgingRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/voting', votingRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/activity', activityRoutes);
 app.use('/api', commentRoutes);
 app.use('/api', announcementRoutes);
 app.use('/api', realtimeRoutes);
