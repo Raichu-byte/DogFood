@@ -78,35 +78,31 @@ body {
 @keyframes signalTravel {
   0% {
     transform: translateX(0px);
-    opacity: 0.2;
+    opacity: 0.3;
   }
-  15% {
-    opacity: 1;
-    transform: translateX(180px);
-  }
-  30% {
-    transform: translateX(360px);
+  20% {
+    transform: translateX(260px);
     opacity: 1;
   }
-  50% {
+  45% {
     transform: translateX(540px);
     opacity: 1;
   }
   70% {
-    transform: translateX(720px);
+    transform: translateX(820px);
     opacity: 1;
   }
-  85% {
-    transform: translateX(900px);
+  90% {
+    transform: translateX(1080px);
     opacity: 1;
   }
-  95% {
-    opacity: 0.3;
-    transform: translateX(960px);
+  96% {
+    transform: translateX(1100px);
+    opacity: 0.2;
   }
   100% {
     transform: translateX(0px);
-    opacity: 0.2;
+    opacity: 0.3;
   }
 }
 
