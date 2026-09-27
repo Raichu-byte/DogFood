@@ -20,11 +20,16 @@ import {
   LogOut,
   Send,
   PlusCircle,
-  HelpCircle
+  HelpCircle,
+  Megaphone,
+  MessageSquare,
+  Pin,
+  Trash2,
+  CornerDownRight
 } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'gallery', 'leaderboard', 'judging', 'team'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'gallery', 'leaderboard', 'announcements', 'judging', 'team'
   const [health, setHealth] = useState(null);
   const [eventData, setEventData] = useState(null);
   const [gallery, setGallery] = useState([]);
@@ -36,6 +41,19 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token') || '');
+
+  // Announcements state
+  const [announcements, setAnnouncements] = useState([]);
+  const [announcementTitle, setAnnouncementTitle] = useState('');
+  const [announcementContent, setAnnouncementContent] = useState('');
+  const [announcementPinned, setAnnouncementPinned] = useState(false);
+
+  // Discussions & Threaded Comments state
+  const [discussionProject, setDiscussionProject] = useState(null);
+  const [commentsList, setCommentsList] = useState([]);
+  const [commentInput, setCommentInput] = useState('');
+  const [replyParentId, setReplyParentId] = useState(null);
+  const [replyParentAuthor, setReplyParentAuthor] = useState('');
 
   // Auth Modal state
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -105,6 +123,7 @@ export default function App() {
   useEffect(() => {
     if (activeTab === 'gallery') fetchGallery();
     if (activeTab === 'leaderboard') fetchLeaderboard();
+    if (activeTab === 'announcements') fetchAnnouncements();
     if (activeTab === 'judging') fetchJudgingQueue();
     if (activeTab === 'overview') fetchWinners();
   }, [activeTab, leaderboardMode, selectedTrack, searchQuery, token]);
@@ -157,6 +176,217 @@ export default function App() {
         if (data.prizes) setWinners(data.prizes);
       })
       .catch(err => console.error(err));
+  };
+
+  const fetchAnnouncements = () => {
+    setLoading(true);
+    fetch('/api/events/dogfood-2026/announcements')
+      .then(res => res.json())
+      .then(data => {
+        setAnnouncements(data.announcements || []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  };
+
+  const handleCreateAnnouncement = (e) => {
+    if (e) e.preventDefault();
+    if (!token) {
+      setShowAuthModal(true);
+      return;
+    }
+    if (!announcementTitle.trim() || !announcementContent.trim()) {
+      showToast('⚠️ Title and content are required.');
+      return;
+    }
+
+    fetch('/api/events/dogfood-2026/announcements', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        title: announcementTitle,
+        content: announcementContent,
+        isPinned: announcementPinned,
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.announcement) {
+          showToast('📢 Announcement broadcasted!');
+          setAnnouncementTitle('');
+          setAnnouncementContent('');
+          setAnnouncementPinned(false);
+          fetchAnnouncements();
+        } else {
+          showToast(`⚠️ ${data.error}`);
+        }
+      })
+      .catch(() => showToast('Network error creating announcement.'));
+  };
+
+  const openProjectComments = (project) => {
+    setDiscussionProject(project);
+    fetchCommentsForProject(project.id);
+  };
+
+  const fetchCommentsForProject = (submissionId) => {
+    fetch(`/api/submissions/${submissionId}/comments`)
+      .then(res => res.json())
+      .then(data => {
+        setCommentsList(data.comments || []);
+      })
+      .catch(err => console.error(err));
+  };
+
+  const handlePostComment = (e) => {
+    if (e) e.preventDefault();
+    if (!token) {
+      setShowAuthModal(true);
+      return;
+    }
+    if (!commentInput.trim()) return;
+
+    fetch(`/api/submissions/${discussionProject.id}/comments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        content: commentInput.trim(),
+        parentId: replyParentId || undefined,
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.comment) {
+          showToast('💬 Comment posted!');
+          setCommentInput('');
+          setReplyParentId(null);
+          setReplyParentAuthor('');
+          fetchCommentsForProject(discussionProject.id);
+        } else {
+          showToast(`⚠️ ${data.error}`);
+        }
+      })
+      .catch(() => showToast('Network error posting comment.'));
+  };
+
+  const handlePinComment = (commentId) => {
+    if (!token) return;
+    fetch(`/api/comments/${commentId}/pin`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.comment) {
+          showToast(data.message);
+          fetchCommentsForProject(discussionProject.id);
+        } else {
+          showToast(`⚠️ ${data.error}`);
+        }
+      });
+  };
+
+  const handleDeleteComment = (commentId) => {
+    if (!token) return;
+    fetch(`/api/comments/${commentId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.message) {
+          showToast('Comment deleted.');
+          fetchCommentsForProject(discussionProject.id);
+        } else {
+          showToast(`⚠️ ${data.error}`);
+        }
+      });
+  };
+
+  const renderCommentNode = (node, depth = 0) => {
+    return (
+      <div key={node.id} className={`space-y-2 ${depth > 0 ? 'ml-6 pl-4 border-l border-[#1e2330]' : ''}`}>
+        <div className={`p-4 rounded-xl border ${node.isPinned ? 'border-amber-400/40 bg-[#161a28]' : 'border-[#1a1f2c] bg-[#0d1017]'} space-y-2`}>
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center space-x-2">
+              {node.isPinned && (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-amber-400/10 text-amber-400 border border-amber-400/30 flex items-center space-x-1">
+                  <Pin className="w-2.5 h-2.5" />
+                  <span>PINNED</span>
+                </span>
+              )}
+              <span className={`font-bold ${node.isDeleted ? 'text-neutral-500 italic' : 'text-white'}`}>
+                {node.author?.name || 'Anonymous'}
+              </span>
+              {node.author?.role && (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-[#1a1f2c] text-[#ff5500]">
+                  {node.author.role}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] font-mono text-neutral-500">
+              {new Date(node.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+
+          <p className={`text-xs leading-relaxed ${node.isDeleted ? 'text-neutral-500 italic font-mono' : 'text-neutral-300'}`}>
+            {node.content}
+          </p>
+
+          {!node.isDeleted && (
+            <div className="pt-2 border-t border-[#161922] flex items-center justify-between text-[11px] font-mono text-neutral-400">
+              <button
+                onClick={() => {
+                  setReplyParentId(node.id);
+                  setReplyParentAuthor(node.author?.name || 'User');
+                }}
+                className="hover:text-[#ff5500] flex items-center space-x-1"
+              >
+                <CornerDownRight className="w-3 h-3" />
+                <span>Reply</span>
+              </button>
+
+              <div className="flex items-center space-x-3">
+                {(currentUser?.role === 'ORGANIZER' || currentUser?.role === 'ADMIN') && (
+                  <button
+                    onClick={() => handlePinComment(node.id)}
+                    className="hover:text-amber-400 flex items-center space-x-1"
+                    title={node.isPinned ? "Unpin comment" : "Pin comment to top"}
+                  >
+                    <Pin className="w-3 h-3" />
+                    <span>{node.isPinned ? 'Unpin' : 'Pin'}</span>
+                  </button>
+                )}
+
+                {(currentUser?.id === node.author?.id || currentUser?.role === 'ORGANIZER' || currentUser?.role === 'ADMIN') && (
+                  <button
+                    onClick={() => handleDeleteComment(node.id)}
+                    className="hover:text-rose-400 flex items-center space-x-1"
+                    title="Delete comment"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Delete</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Nested replies */}
+        {node.replies && node.replies.length > 0 && (
+          <div className="space-y-2 mt-2">
+            {node.replies.map(reply => renderCommentNode(reply, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   const fetchJudgingQueue = () => {
@@ -352,6 +582,18 @@ export default function App() {
             >
               <Trophy className="w-3.5 h-3.5" />
               <span>LEADERBOARD</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('announcements')}
+              className={`px-4 py-2 rounded-lg text-xs font-semibold font-mono transition-all flex items-center space-x-2 ${
+                activeTab === 'announcements'
+                  ? 'bg-[#ff5500] text-black shadow-md shadow-[#ff5500]/20'
+                  : 'text-neutral-400 hover:text-white hover:bg-[#1a1f2c]'
+              }`}
+            >
+              <Megaphone className="w-3.5 h-3.5" />
+              <span>ANNOUNCEMENTS</span>
             </button>
 
             <button
@@ -671,14 +913,21 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Community Vote Action Button */}
-                    <div className="pt-5 mt-4 border-t border-[#181c27] flex items-center justify-between">
+                    {/* Discuss & Community Vote Action Buttons */}
+                    <div className="pt-5 mt-4 border-t border-[#181c27] grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => openProjectComments(project)}
+                        className="py-2.5 rounded-xl font-mono text-xs font-bold bg-[#141824] hover:bg-[#202738] text-neutral-300 hover:text-white transition border border-[#232a3d] flex items-center justify-center space-x-1.5"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 text-[#ff5500]" />
+                        <span>DISCUSS</span>
+                      </button>
                       <button
                         onClick={() => handleCommunityVote(project.id)}
-                        className="w-full py-2.5 rounded-xl font-mono text-xs font-bold bg-[#1a1f2c] hover:bg-[#ff5500] text-white hover:text-black transition border border-[#262d3e] hover:border-[#ff5500] flex items-center justify-center space-x-2"
+                        className="py-2.5 rounded-xl font-mono text-xs font-bold bg-[#1a1f2c] hover:bg-[#ff5500] text-white hover:text-black transition border border-[#262d3e] hover:border-[#ff5500] flex items-center justify-center space-x-1.5"
                       >
                         <Vote className="w-3.5 h-3.5 text-[#ff5500] group-hover:text-black" />
-                        <span>CAST COMMUNITY VOTE</span>
+                        <span>VOTE</span>
                       </button>
                     </div>
                   </div>
@@ -832,6 +1081,111 @@ export default function App() {
         )}
 
         {/* ============================================================ */}
+        {/* TAB: ANNOUNCEMENTS & ORGANIZER BROADCASTS */}
+        {/* ============================================================ */}
+        {activeTab === 'announcements' && (
+          <div className="space-y-8">
+            <div className="bg-[#10131c] border border-[#1e2330] p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-black tracking-tight text-white flex items-center space-x-2">
+                  <Megaphone className="w-6 h-6 text-[#ff5500]" />
+                  <span>EVENT ANNOUNCEMENTS</span>
+                </h2>
+                <p className="text-xs text-neutral-400 font-mono mt-1">
+                  Official updates and broadcasts from tournament organizers
+                </p>
+              </div>
+            </div>
+
+            {/* Organizer Announcement Composer */}
+            {(currentUser?.role === 'ORGANIZER' || currentUser?.role === 'ADMIN') && (
+              <div className="bg-[#121622] border border-[#ff5500]/30 p-6 rounded-2xl space-y-4 shadow-xl">
+                <h3 className="text-sm font-mono font-bold text-[#ff5500] flex items-center space-x-2">
+                  <Megaphone className="w-4 h-4" />
+                  <span>BROADCAST NEW ANNOUNCEMENT (ORGANIZER)</span>
+                </h3>
+                <form onSubmit={handleCreateAnnouncement} className="space-y-4">
+                  <input
+                    type="text"
+                    placeholder="Announcement headline..."
+                    value={announcementTitle}
+                    onChange={(e) => setAnnouncementTitle(e.target.value)}
+                    className="w-full bg-[#090a0f] border border-[#1e2330] rounded-xl px-4 py-2.5 text-xs font-mono text-white outline-none focus:border-[#ff5500]"
+                  />
+                  <textarea
+                    rows={3}
+                    placeholder="Full announcement details..."
+                    value={announcementContent}
+                    onChange={(e) => setAnnouncementContent(e.target.value)}
+                    className="w-full bg-[#090a0f] border border-[#1e2330] rounded-xl px-4 py-2.5 text-xs font-mono text-white outline-none focus:border-[#ff5500]"
+                  />
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center space-x-2 text-xs font-mono text-neutral-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={announcementPinned}
+                        onChange={(e) => setAnnouncementPinned(e.target.checked)}
+                        className="accent-[#ff5500]"
+                      />
+                      <span>Pin to Top of Feed</span>
+                    </label>
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 rounded-xl bg-[#ff5500] hover:bg-[#ff661a] text-black font-mono font-bold text-xs transition flex items-center space-x-2"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>BROADCAST</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Announcements Feed */}
+            {loading ? (
+              <div className="text-center py-20 text-neutral-400 font-mono">
+                <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#ff5500] mb-3" />
+                Loading announcements...
+              </div>
+            ) : announcements.length === 0 ? (
+              <div className="text-center py-20 bg-[#10131c] border border-[#1e2330] rounded-2xl">
+                <p className="text-neutral-400 font-mono">No announcements posted yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {announcements.map((a) => (
+                  <div
+                    key={a.id}
+                    className={`bg-[#10131c] border p-6 rounded-2xl space-y-3 transition ${
+                      a.isPinned ? 'border-amber-400/50 bg-[#141724]' : 'border-[#1e2330]'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-2">
+                        {a.isPinned && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-400/10 text-amber-400 border border-amber-400/30 flex items-center space-x-1">
+                            <Pin className="w-3 h-3" />
+                            <span>PINNED</span>
+                          </span>
+                        )}
+                        <h3 className="text-lg font-bold text-white">{a.title}</h3>
+                      </div>
+                      <span className="text-[11px] font-mono text-neutral-500">
+                        {new Date(a.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-neutral-300 leading-relaxed whitespace-pre-wrap">{a.content}</p>
+                    <div className="pt-2 border-t border-[#181c27] flex items-center justify-between text-xs text-neutral-500 font-mono">
+                      <span>Posted by {a.author?.name || 'Organizer'}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ============================================================ */}
         {/* TAB 4: JUDGING EVALUATION QUEUE & RUBRIC SCORING */}
         {/* ============================================================ */}
         {activeTab === 'judging' && (
@@ -961,6 +1315,82 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Project Threaded Discussion Modal */}
+      {discussionProject && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#10131c] border border-[#1e2330] rounded-3xl p-6 md:p-8 max-w-2xl w-full max-h-[85vh] flex flex-col space-y-6 shadow-2xl animate-scale-in">
+            <div className="flex justify-between items-center border-b border-[#1e2330] pb-4">
+              <div>
+                <span className="text-[10px] font-mono text-[#ff5500] font-bold">PROJECT DISCUSSION</span>
+                <h3 className="text-xl font-bold text-white flex items-center space-x-2">
+                  <MessageSquare className="w-5 h-5 text-[#ff5500]" />
+                  <span>{discussionProject.title}</span>
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setDiscussionProject(null);
+                  setReplyParentId(null);
+                  setReplyParentAuthor('');
+                }}
+                className="text-neutral-400 hover:text-white text-lg font-bold p-1.5"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Comments List */}
+            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+              {commentsList.length === 0 ? (
+                <div className="text-center py-12 text-neutral-500 font-mono text-xs">
+                  No comments yet. Be the first to start the discussion!
+                </div>
+              ) : (
+                commentsList.map(comment => renderCommentNode(comment))
+              )}
+            </div>
+
+            {/* Comment Composer */}
+            <div className="border-t border-[#1e2330] pt-4 space-y-2">
+              {replyParentId && (
+                <div className="flex items-center justify-between text-xs font-mono bg-[#161a26] px-3 py-1.5 rounded-lg border border-[#22283a]">
+                  <span className="text-neutral-400">
+                    Replying to <strong className="text-white">{replyParentAuthor}</strong>
+                  </span>
+                  <button
+                    onClick={() => {
+                      setReplyParentId(null);
+                      setReplyParentAuthor('');
+                    }}
+                    className="text-rose-400 hover:text-rose-300"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+              <form onSubmit={handlePostComment} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder={currentUser ? (replyParentId ? "Write a reply..." : "Ask a question or share feedback...") : "Sign in to join the discussion"}
+                  disabled={!currentUser}
+                  value={commentInput}
+                  onChange={(e) => setCommentInput(e.target.value)}
+                  className="flex-1 bg-[#090a0f] border border-[#1e2330] rounded-xl px-4 py-2.5 text-xs font-mono text-white outline-none focus:border-[#ff5500] disabled:opacity-50"
+                />
+                <button
+                  type="submit"
+                  disabled={!currentUser || !commentInput.trim()}
+                  className="px-5 py-2.5 rounded-xl bg-[#ff5500] hover:bg-[#ff661a] disabled:opacity-50 text-black font-mono font-bold text-xs transition flex items-center space-x-1.5"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>POST</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Auth Modal */}
       {showAuthModal && (

@@ -334,6 +334,54 @@ async function main() {
     },
   });
 
+  // 12. Event Announcements (Phase 17)
+  await prisma.announcement.createMany({
+    data: [
+      {
+        eventId: event.id,
+        authorId: organizer.id,
+        title: '🚀 Dogfood 2026 Officially Underway!',
+        content: 'Welcome builders to Dogfood 2026. Submissions must run with 100% offline-first local dependencies. Zero cloud runtime dependencies allowed.',
+        isPinned: true,
+      },
+      {
+        eventId: event.id,
+        authorId: organizer.id,
+        title: '⚖️ Judging Rubric & Z-Score Normalization Engine Active',
+        content: 'Judges will evaluate submissions on Technical Depth (35%), Novelty (25%), Offline Resilience (20%), and UI Polish (20%). Scores are calibrated with statistical Z-Score normalization.',
+        isPinned: false,
+      },
+    ],
+  });
+
+  // 13. Project Threaded Comments (Phase 17)
+  const comment1 = await prisma.comment.create({
+    data: {
+      submissionId: sub1.id,
+      authorId: participants[1].id, // Bob
+      content: 'Incredible throughput benchmarks! How does HyperScale DB handle network split partitions?',
+      isPinned: true,
+    },
+  });
+
+  await prisma.comment.create({
+    data: {
+      submissionId: sub1.id,
+      authorId: participants[0].id, // Alice
+      parentId: comment1.id,
+      content: 'We use hybrid vector clocks with CRDTs and RAFT consensus with local WAL disk fallback.',
+    },
+  });
+
+  const comment2 = await prisma.comment.create({
+    data: {
+      submissionId: sub3.id,
+      authorId: organizer.id,
+      content: 'Outstanding visual polish on the hardware telemetry dashboard! Clean local SVG charts.',
+      isPinned: true,
+    },
+  });
+
   console.log('[SEED] Database seed completed successfully!');
 }
 
