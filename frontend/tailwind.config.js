@@ -8,35 +8,37 @@ export default {
   theme: {
     extend: {
       colors: {
-        charcoal: {
-          950: '#07080a',
-          900: '#0a0b0e',
-          800: '#111318',
-          700: '#181b22',
-          600: '#222733',
-        },
-        brand: {
-          orange: '#ff5500',
-          amber: '#f97316',
-          dark: '#cc4400',
+        theme: {
+          black: '#090909',
+          'black-2': '#0d0d0d',
+          'black-3': '#121212',
+          white: '#f1f0ed',
+          'white-soft': '#c8c6c3',
+          line: '#3a393b',
+          'line-soft': '#242326',
+          'line-bright': '#5c5960',
+          purple: '#a98be8',
+          'purple-soft': 'rgba(169, 139, 232, 0.30)',
+          'purple-faint': 'rgba(169, 139, 232, 0.12)',
+          green: '#9eea9a',
+          'green-soft': 'rgba(158, 234, 154, 0.20)',
+          button: '#bca1ee',
+          'button-text': '#161218',
         },
       },
       fontFamily: {
-        sans: [
-          'Inter',
-          '-apple-system',
-          'BlinkMacSystemFont',
-          'Segoe UI',
-          'Roboto',
+        headline: [
+          '"Helvetica Neue"',
+          'Helvetica',
+          'Arial',
           'sans-serif',
         ],
         mono: [
-          'JetBrains Mono',
-          'ui-monospace',
-          'SFMono-Regular',
+          '"IBM Plex Mono"',
+          '"SFMono-Regular"',
+          'Consolas',
           'Menlo',
           'Monaco',
-          'Consolas',
           'monospace',
         ],
       },

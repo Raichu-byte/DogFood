@@ -8,7 +8,6 @@ import {
   Search,
   ExternalLink,
   Github,
-  Youtube,
   Vote,
   CheckCircle2,
   Lock,
@@ -20,16 +19,18 @@ import {
   LogOut,
   Send,
   PlusCircle,
-  HelpCircle,
   Megaphone,
   MessageSquare,
   Pin,
   Trash2,
-  CornerDownRight
+  CornerDownRight,
+  UserCheck,
+  UserPlus
 } from 'lucide-react';
+import KineticHero from './components/KineticHero';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'gallery', 'leaderboard', 'announcements', 'judging', 'team'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'gallery', 'leaderboard', 'announcements', 'hackers', 'judging'
   const [health, setHealth] = useState(null);
   const [eventData, setEventData] = useState(null);
   const [gallery, setGallery] = useState([]);
@@ -55,6 +56,13 @@ export default function App() {
   const [replyParentId, setReplyParentId] = useState(null);
   const [replyParentAuthor, setReplyParentAuthor] = useState('');
 
+  // Matchmaking & Hacker Directory state (Phase 18)
+  const [hackers, setHackers] = useState([]);
+  const [recruitingTeams, setRecruitingTeams] = useState([]);
+  const [hackerSkillFilter, setHackerSkillFilter] = useState('');
+  const [applyMessage, setApplyMessage] = useState('');
+  const [selectedTeamForApply, setSelectedTeamForApply] = useState(null);
+
   // Auth Modal state
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authEmail, setAuthEmail] = useState('');
@@ -68,20 +76,6 @@ export default function App() {
   const [feedbackInput, setFeedbackInput] = useState({});
   const [scoreSuccess, setScoreSuccess] = useState('');
 
-  // Team & Submission Draft state
-  const [teamName, setTeamName] = useState('');
-  const [inviteCodeInput, setInviteCodeInput] = useState('');
-  const [myTeam, setMyTeam] = useState(null);
-  const [submissionDraft, setSubmissionDraft] = useState({
-    title: '',
-    tagline: '',
-    description: '',
-    techStack: 'React, Express, TailwindCSS',
-    repoUrl: '',
-    demoUrl: '',
-    videoUrl: '',
-    trackId: '',
-  });
   const [toastMessage, setToastMessage] = useState('');
 
   const showToast = (msg) => {
@@ -124,9 +118,13 @@ export default function App() {
     if (activeTab === 'gallery') fetchGallery();
     if (activeTab === 'leaderboard') fetchLeaderboard();
     if (activeTab === 'announcements') fetchAnnouncements();
+    if (activeTab === 'hackers') {
+      fetchHackers();
+      fetchRecruitingTeams();
+    }
     if (activeTab === 'judging') fetchJudgingQueue();
     if (activeTab === 'overview') fetchWinners();
-  }, [activeTab, leaderboardMode, selectedTrack, searchQuery, token]);
+  }, [activeTab, leaderboardMode, selectedTrack, searchQuery, hackerSkillFilter, token]);
 
   const fetchEventData = () => {
     fetch('/api/events/dogfood-2026')
@@ -227,6 +225,60 @@ export default function App() {
       .catch(() => showToast('Network error creating announcement.'));
   };
 
+  const fetchHackers = () => {
+    setLoading(true);
+    let url = '/api/matchmaking/hackers?lookingForTeam=true';
+    if (hackerSkillFilter) url += `&skill=${encodeURIComponent(hackerSkillFilter)}`;
+
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        setHackers(data.hackers || []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  };
+
+  const fetchRecruitingTeams = () => {
+    fetch('/api/matchmaking/teams?isLookingForMembers=true')
+      .then(res => res.json())
+      .then(data => {
+        setRecruitingTeams(data.teams || []);
+      })
+      .catch(err => console.error(err));
+  };
+
+  const handleApplyToTeam = (e) => {
+    if (e) e.preventDefault();
+    if (!token) {
+      setShowAuthModal(true);
+      return;
+    }
+    if (!selectedTeamForApply) return;
+
+    fetch(`/api/matchmaking/teams/${selectedTeamForApply.id}/apply`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        message: applyMessage || 'Excited to build with your team!',
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.request) {
+          showToast('Application sent to team leader!');
+          setSelectedTeamForApply(null);
+          setApplyMessage('');
+        } else {
+          showToast(`⚠️ ${data.error}`);
+        }
+      })
+      .catch(() => showToast('Network error applying to team.'));
+  };
+
   const openProjectComments = (project) => {
     setDiscussionProject(project);
     fetchCommentsForProject(project.id);
@@ -311,21 +363,21 @@ export default function App() {
 
   const renderCommentNode = (node, depth = 0) => {
     return (
-      <div key={node.id} className={`space-y-2 ${depth > 0 ? 'ml-6 pl-4 border-l border-[#1e2330]' : ''}`}>
-        <div className={`p-4 rounded-xl border ${node.isPinned ? 'border-amber-400/40 bg-[#161a28]' : 'border-[#1a1f2c] bg-[#0d1017]'} space-y-2`}>
+      <div key={node.id} className={`space-y-2 ${depth > 0 ? 'ml-4 pl-3 border-l border-[#242326]' : ''}`}>
+        <div className={`p-4 border ${node.isPinned ? 'border-[#a98be8]/40 bg-[#121118]' : 'border-[#242326] bg-[#0c0c0e]'} space-y-2`}>
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center space-x-2">
               {node.isPinned && (
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-amber-400/10 text-amber-400 border border-amber-400/30 flex items-center space-x-1">
+                <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold bg-[#a98be8]/10 text-[#a98be8] border border-[#a98be8]/30 flex items-center space-x-1">
                   <Pin className="w-2.5 h-2.5" />
                   <span>PINNED</span>
                 </span>
               )}
-              <span className={`font-bold ${node.isDeleted ? 'text-neutral-500 italic' : 'text-white'}`}>
+              <span className={`font-mono text-xs font-semibold ${node.isDeleted ? 'text-neutral-500 italic' : 'text-[#f1f0ed]'}`}>
                 {node.author?.name || 'Anonymous'}
               </span>
               {node.author?.role && (
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-[#1a1f2c] text-[#ff5500]">
+                <span className="px-1.5 py-0.5 text-[9px] font-mono bg-[#16151a] text-[#a98be8] border border-[#242326]">
                   {node.author.role}
                 </span>
               )}
@@ -335,18 +387,18 @@ export default function App() {
             </span>
           </div>
 
-          <p className={`text-xs leading-relaxed ${node.isDeleted ? 'text-neutral-500 italic font-mono' : 'text-neutral-300'}`}>
+          <p className={`text-xs leading-relaxed ${node.isDeleted ? 'text-neutral-500 italic font-mono' : 'text-[#c8c6c3]'}`}>
             {node.content}
           </p>
 
           {!node.isDeleted && (
-            <div className="pt-2 border-t border-[#161922] flex items-center justify-between text-[11px] font-mono text-neutral-400">
+            <div className="pt-2 border-t border-[#1a191d] flex items-center justify-between text-[11px] font-mono text-neutral-400">
               <button
                 onClick={() => {
                   setReplyParentId(node.id);
                   setReplyParentAuthor(node.author?.name || 'User');
                 }}
-                className="hover:text-[#ff5500] flex items-center space-x-1"
+                className="hover:text-[#a98be8] flex items-center space-x-1"
               >
                 <CornerDownRight className="w-3 h-3" />
                 <span>Reply</span>
@@ -356,7 +408,7 @@ export default function App() {
                 {(currentUser?.role === 'ORGANIZER' || currentUser?.role === 'ADMIN') && (
                   <button
                     onClick={() => handlePinComment(node.id)}
-                    className="hover:text-amber-400 flex items-center space-x-1"
+                    className="hover:text-[#a98be8] flex items-center space-x-1"
                     title={node.isPinned ? "Unpin comment" : "Pin comment to top"}
                   >
                     <Pin className="w-3 h-3" />
@@ -473,9 +525,9 @@ export default function App() {
       .then(res => res.json())
       .then(data => {
         if (data.vote) {
-          showToast('🎉 Your community vote was cast successfully!');
-          fetchGallery();
-          fetchLeaderboard();
+          showToast('🗳️ Ballot recorded in community tally!');
+          if (activeTab === 'gallery') fetchGallery();
+          if (activeTab === 'leaderboard') fetchLeaderboard();
         } else {
           showToast(`⚠️ ${data.error || 'Unable to vote'}`);
         }
@@ -517,312 +569,198 @@ export default function App() {
       });
   };
 
+  const navigation = [
+    { id: 'overview', label: 'OVERVIEW' },
+    { id: 'gallery', label: 'GALLERY' },
+    { id: 'leaderboard', label: 'LEADERBOARD' },
+    { id: 'announcements', label: 'ANNOUNCEMENTS' },
+    { id: 'hackers', label: 'HACKER DIRECTORY' },
+    { id: 'judging', label: 'JUDGING' },
+  ];
+
   return (
-    <div className="min-h-screen bg-[#090a0f] text-[#f3f4f6] flex flex-col font-sans selection:bg-[#ff5500]/30 selection:text-white">
+    <div className="min-h-screen bg-[#090909] text-[#f1f0ed] flex flex-col font-mono selection:bg-[#a98be8]/30 selection:text-white">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#161922] border border-[#ff5500]/40 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center space-x-3 animate-fade-in font-mono text-sm">
-          <Sparkles className="w-4 h-4 text-[#ff5500]" />
+        <div className="fixed bottom-6 right-6 z-50 bg-[#0d0d0d] border border-[#a98be8]/50 text-[#f1f0ed] px-5 py-3 shadow-2xl flex items-center space-x-3 font-mono text-xs">
+          <span className="w-2 h-2 rounded-full bg-[#9eea9a] animate-ping"></span>
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Navigation Header */}
-      <header className="sticky top-0 z-40 bg-[#090a0f]/90 backdrop-blur-md border-b border-[#1e2330] px-6 py-4">
+      {/* Thin Editorial Navigation Header (DESIGN.md section 5) */}
+      <header className="sticky top-0 z-40 bg-[#090909]/95 backdrop-blur-sm border-b border-[#242326] px-6 py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          {/* Logo & Platform Tag */}
-          <div className="flex items-center space-x-4 cursor-pointer" onClick={() => setActiveTab('overview')}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff5500] to-[#ff2200] flex items-center justify-center font-black text-black shadow-lg shadow-[#ff5500]/20 text-lg">
-              DF
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h1 className="font-extrabold text-lg tracking-tight">DOGFOOD</h1>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-[#ff5500]/10 text-[#ff5500] font-mono font-bold border border-[#ff5500]/20">
-                  2026
-                </span>
-              </div>
-              <p className="text-[11px] text-neutral-400 font-mono tracking-wider">HACKATHON PLATFORM</p>
-            </div>
+          {/* Left: Brand Wordmark */}
+          <div
+            className="cursor-pointer flex items-center space-x-3 group"
+            onClick={() => setActiveTab('overview')}
+          >
+            <span className="w-2 h-2 rounded-none bg-[#9eea9a]"></span>
+            <span className="font-mono text-xs tracking-widest font-bold text-[#f1f0ed] group-hover:text-[#a98be8] transition">
+              DOGFOOD 2026 // NEXERA
+            </span>
           </div>
 
-          {/* Navigation Tabs */}
-          <nav className="hidden md:flex items-center space-x-1 bg-[#12151e] p-1.5 rounded-xl border border-[#1e2330]">
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold font-mono transition-all flex items-center space-x-2 ${
-                activeTab === 'overview'
-                  ? 'bg-[#ff5500] text-black shadow-md shadow-[#ff5500]/20'
-                  : 'text-neutral-400 hover:text-white hover:bg-[#1a1f2c]'
-              }`}
-            >
-              <Award className="w-3.5 h-3.5" />
-              <span>OVERVIEW</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('gallery')}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold font-mono transition-all flex items-center space-x-2 ${
-                activeTab === 'gallery'
-                  ? 'bg-[#ff5500] text-black shadow-md shadow-[#ff5500]/20'
-                  : 'text-neutral-400 hover:text-white hover:bg-[#1a1f2c]'
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>GALLERY</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('leaderboard')}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold font-mono transition-all flex items-center space-x-2 ${
-                activeTab === 'leaderboard'
-                  ? 'bg-[#ff5500] text-black shadow-md shadow-[#ff5500]/20'
-                  : 'text-neutral-400 hover:text-white hover:bg-[#1a1f2c]'
-              }`}
-            >
-              <Trophy className="w-3.5 h-3.5" />
-              <span>LEADERBOARD</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('announcements')}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold font-mono transition-all flex items-center space-x-2 ${
-                activeTab === 'announcements'
-                  ? 'bg-[#ff5500] text-black shadow-md shadow-[#ff5500]/20'
-                  : 'text-neutral-400 hover:text-white hover:bg-[#1a1f2c]'
-              }`}
-            >
-              <Megaphone className="w-3.5 h-3.5" />
-              <span>ANNOUNCEMENTS</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('judging')}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold font-mono transition-all flex items-center space-x-2 ${
-                activeTab === 'judging'
-                  ? 'bg-[#ff5500] text-black shadow-md shadow-[#ff5500]/20'
-                  : 'text-neutral-400 hover:text-white hover:bg-[#1a1f2c]'
-              }`}
-            >
-              <Sliders className="w-3.5 h-3.5" />
-              <span>JUDGING</span>
-            </button>
+          {/* Center: Thin Monospace Navigation Tabs */}
+          <nav className="hidden lg:flex items-center space-x-6 text-[11px] font-mono tracking-wider">
+            {navigation.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`transition-colors uppercase pb-1 border-b ${
+                  activeTab === tab.id
+                    ? 'text-[#f1f0ed] border-[#a98be8] font-bold'
+                    : 'text-[#c8c6c3] border-transparent hover:text-[#f1f0ed] hover:border-[#3a393b]'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </nav>
 
-          {/* User Auth & Status */}
-          <div className="flex items-center space-x-3">
-            <span className="hidden lg:inline-flex items-center px-2.5 py-1 rounded-full text-xs font-mono bg-[#12151e] text-neutral-300 border border-[#1e2330]">
-              <span className={`w-2 h-2 rounded-full mr-2 ${health?.status === 'ok' ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`}></span>
-              API: {health?.status === 'ok' ? 'ONLINE' : 'OFFLINE'}
+          {/* Right: Status Pill & Lavender CTA / User Action */}
+          <div className="flex items-center space-x-4">
+            <span className="hidden sm:inline-flex items-center px-2 py-0.5 text-[10px] font-mono text-[#c8c6c3] border border-[#242326]">
+              <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${health?.status === 'ok' ? 'bg-[#9eea9a]' : 'bg-rose-400'}`}></span>
+              {health?.status === 'ok' ? 'SYSTEM: ONLINE' : 'SYSTEM: OFFLINE'}
             </span>
 
             {currentUser ? (
-              <div className="flex items-center space-x-2 bg-[#12151e] border border-[#1e2330] p-1.5 pl-3 rounded-xl">
+              <div className="flex items-center space-x-3 border border-[#242326] px-3 py-1.5 bg-[#0d0d0d]">
                 <div className="text-right">
-                  <p className="text-xs font-bold leading-tight">{currentUser.name}</p>
-                  <p className="text-[10px] font-mono text-[#ff5500] font-semibold">{currentUser.role}</p>
+                  <p className="text-[11px] font-bold text-[#f1f0ed] leading-none">{currentUser.name}</p>
+                  <p className="text-[9px] text-[#a98be8] font-semibold mt-0.5 uppercase tracking-wider">{currentUser.role}</p>
                 </div>
                 <button
                   onClick={handleLogout}
-                  title="Logout"
-                  className="p-1.5 hover:bg-[#1e2330] rounded-lg text-neutral-400 hover:text-rose-400 transition"
+                  title="Sign Out"
+                  className="text-neutral-500 hover:text-[#f1f0ed] transition"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-3.5 h-3.5" />
                 </button>
               </div>
             ) : (
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="px-4 py-2 rounded-xl text-xs font-mono font-bold bg-[#1e2330] hover:bg-[#282f42] text-white border border-[#2c3447] flex items-center space-x-2 transition"
+                className="px-4 py-2 bg-[#bca1ee] hover:bg-[#caaefc] text-[#161218] font-mono text-[11px] font-bold tracking-wider transition uppercase"
               >
-                <LogIn className="w-3.5 h-3.5 text-[#ff5500]" />
-                <span>SIGN IN</span>
+                SIGN IN ↗
               </button>
             )}
           </div>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8">
+      {/* Main Content Viewport */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8 space-y-12">
         {/* ============================================================ */}
-        {/* TAB 1: OVERVIEW & EVENT HERO */}
+        {/* TAB 1: OVERVIEW & KINETIC GEOMETRIC ARTWORK */}
         {/* ============================================================ */}
         {activeTab === 'overview' && (
           <div className="space-y-12">
-            {/* Hero Section */}
-            <div className="relative rounded-3xl bg-gradient-to-b from-[#151924] to-[#0d1017] border border-[#1e2330] p-8 md:p-14 overflow-hidden text-center md:text-left">
-              <div className="absolute top-0 right-0 w-96 h-96 bg-[#ff5500]/10 rounded-full blur-3xl pointer-events-none"></div>
+            {/* Kinetic Geometric Hero System (DESIGN.md) */}
+            <KineticHero
+              onExploreClick={() => setActiveTab('gallery')}
+              onLeaderboardClick={() => setActiveTab('leaderboard')}
+            />
 
-              <div className="max-w-3xl space-y-6">
-                <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-mono bg-[#ff5500]/10 text-[#ff5500] border border-[#ff5500]/20 font-bold">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>STATUS: {eventData?.status || 'PUBLISHED'} • ZERO CLOUD DEPENDENCIES</span>
-                </div>
-
-                <h1 className="text-4xl md:text-6xl font-black tracking-tight text-white leading-tight">
-                  {eventData?.name || 'Dogfood 2026: The Builder’s Playground'}
-                </h1>
-
-                <p className="text-lg text-neutral-400 leading-relaxed max-w-2xl">
-                  {eventData?.description ||
-                    'The premier open-source hacker tournament. Build offline-first resilient architectures, submit your creation, and compete for verified prizes.'}
+            {/* Architecture Metrics Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
+              <div className="bg-[#0c0c0e] border border-[#242326] p-6 space-y-1">
+                <p className="text-[10px] font-mono text-[#c8c6c3] tracking-widest uppercase">PRIZE POOL</p>
+                <p className="editorial-headline text-2xl md:text-3xl text-[#f1f0ed]">$20,000</p>
+                <p className="text-[10px] text-neutral-500">Verified USDC & Grants</p>
+              </div>
+              <div className="bg-[#0c0c0e] border border-[#242326] p-6 space-y-1">
+                <p className="text-[10px] font-mono text-[#c8c6c3] tracking-widest uppercase">SUBMISSIONS</p>
+                <p className="editorial-headline text-2xl md:text-3xl text-[#a98be8]">
+                  {eventData?._count?.submissions || 4} SHIPPED
                 </p>
-
-                {/* Event Deadlines & Stats Strip */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 text-left">
-                  <div className="bg-[#0e1118] border border-[#1e2330] p-4 rounded-2xl">
-                    <p className="text-[11px] font-mono text-neutral-400">PRIZE POOL</p>
-                    <p className="text-xl font-black text-white">$20,000</p>
-                  </div>
-                  <div className="bg-[#0e1118] border border-[#1e2330] p-4 rounded-2xl">
-                    <p className="text-[11px] font-mono text-neutral-400">SUBMISSIONS</p>
-                    <p className="text-xl font-black text-[#ff5500]">{eventData?._count?.submissions || 4} SHIPPED</p>
-                  </div>
-                  <div className="bg-[#0e1118] border border-[#1e2330] p-4 rounded-2xl">
-                    <p className="text-[11px] font-mono text-neutral-400">TEAMS</p>
-                    <p className="text-xl font-black text-white">{eventData?._count?.teams || 4} TEAMS</p>
-                  </div>
-                  <div className="bg-[#0e1118] border border-[#1e2330] p-4 rounded-2xl">
-                    <p className="text-[11px] font-mono text-neutral-400">NORMALIZATION</p>
-                    <p className="text-xl font-black text-emerald-400">Z-SCORE</p>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-4 pt-4">
-                  <button
-                    onClick={() => setActiveTab('gallery')}
-                    className="px-6 py-3.5 rounded-xl font-mono text-sm font-bold bg-[#ff5500] text-black hover:bg-[#ff661a] transition shadow-lg shadow-[#ff5500]/20 flex items-center space-x-2"
-                  >
-                    <Layers className="w-4 h-4" />
-                    <span>EXPLORE PROJECT GALLERY</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('leaderboard')}
-                    className="px-6 py-3.5 rounded-xl font-mono text-sm font-bold bg-[#181c27] text-white hover:bg-[#222838] border border-[#2b3347] transition flex items-center space-x-2"
-                  >
-                    <Trophy className="w-4 h-4 text-amber-400" />
-                    <span>VIEW LIVE LEADERBOARD</span>
-                  </button>
-                </div>
+                <p className="text-[10px] text-neutral-500">Freezed with SHA-256 lock</p>
+              </div>
+              <div className="bg-[#0c0c0e] border border-[#242326] p-6 space-y-1">
+                <p className="text-[10px] font-mono text-[#c8c6c3] tracking-widest uppercase">TEAMS</p>
+                <p className="editorial-headline text-2xl md:text-3xl text-[#f1f0ed]">
+                  {eventData?._count?.teams || 4} TEAMS
+                </p>
+                <p className="text-[10px] text-neutral-500">Active hacker rosters</p>
+              </div>
+              <div className="bg-[#0c0c0e] border border-[#242326] p-6 space-y-1">
+                <p className="text-[10px] font-mono text-[#c8c6c3] tracking-widest uppercase">CALIBRATION</p>
+                <p className="editorial-headline text-2xl md:text-3xl text-[#9eea9a]">Z-SCORE</p>
+                <p className="text-[10px] text-neutral-500">Bias variance mitigated</p>
               </div>
             </div>
 
-            {/* Prizes Grid */}
+            {/* Championship Prizes */}
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-black tracking-tight flex items-center space-x-2">
-                    <Award className="w-6 h-6 text-[#ff5500]" />
-                    <span>CHAMPIONSHIP PRIZES</span>
-                  </h2>
-                  <p className="text-sm text-neutral-400 font-mono">Verified rewards for top-ranked submissions</p>
-                </div>
+              <div className="flex justify-between items-center border-b border-[#242326] pb-3">
+                <h2 className="text-lg font-bold text-[#f1f0ed] tracking-wider uppercase flex items-center space-x-2">
+                  <Award className="w-4 h-4 text-[#a98be8]" />
+                  <span>CHAMPIONSHIP PRIZES</span>
+                </h2>
+                <span className="text-[11px] font-mono text-neutral-500">VERIFIED ESCROW REWARDS</span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {(eventData?.prizes || []).map((prize, idx) => (
+                {(eventData?.prizes || [
+                  { id: 'p1', title: 'Grand Championship', amount: '$15,000', description: 'Highest overall calibrated score across all rubric dimensions.' },
+                  { id: 'p2', title: 'Best AI Architecture', amount: '$5,000', description: 'Outstanding edge intelligence and local inference engine.' },
+                  { id: 'p3', title: 'Resilience & Offline Protocol', amount: '$2,500', description: 'Top peer-to-peer decentralized synchronization system.' },
+                ]).map((prize, idx) => (
                   <div
                     key={prize.id || idx}
-                    className="bg-[#10131c] border border-[#1e2330] hover:border-[#ff5500]/50 p-6 rounded-2xl transition duration-300 relative group overflow-hidden"
+                    className="bg-[#0c0c0e] border border-[#242326] hover:border-[#3a393b] p-6 space-y-3 transition group"
                   >
-                    <div className="text-4xl mb-4">{idx === 0 ? '🏆' : idx === 1 ? '🥇' : '🥈'}</div>
-                    <div className="text-2xl font-black text-[#ff5500] font-mono mb-2">{prize.amount}</div>
-                    <h3 className="text-lg font-bold text-white mb-2">{prize.title}</h3>
-                    <p className="text-xs text-neutral-400 leading-relaxed">{prize.description}</p>
-                    {prize.track && (
-                      <span className="inline-block mt-4 px-2.5 py-1 rounded-md text-[10px] font-mono bg-[#1a1f2c] text-neutral-300 border border-[#262e42]">
-                        TRACK: {prize.track.name}
-                      </span>
-                    )}
+                    <div className="text-[10px] font-mono text-[#a98be8] tracking-widest uppercase">
+                      PRIZE CATEGORY 0{idx + 1}
+                    </div>
+                    <div className="editorial-headline text-3xl text-[#f1f0ed] font-normal">
+                      {prize.amount}
+                    </div>
+                    <h3 className="text-sm font-bold text-[#f1f0ed]">{prize.title}</h3>
+                    <p className="text-xs text-[#c8c6c3] leading-relaxed">{prize.description}</p>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            {/* Tracks & Rubric Criteria */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Tracks */}
-              <div className="bg-[#10131c] border border-[#1e2330] p-6 rounded-2xl space-y-4">
-                <h3 className="text-lg font-bold text-white flex items-center space-x-2">
-                  <Layers className="w-5 h-5 text-[#ff5500]" />
-                  <span>COMPETITION TRACKS</span>
-                </h3>
-                <div className="space-y-3">
-                  {(eventData?.tracks || []).map(track => (
-                    <div key={track.id} className="bg-[#0b0d13] p-4 rounded-xl border border-[#1a1f2c]">
-                      <p className="font-bold text-sm text-white">{track.name}</p>
-                      <p className="text-xs text-neutral-400 mt-1">{track.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Rubric Criteria */}
-              <div className="bg-[#10131c] border border-[#1e2330] p-6 rounded-2xl space-y-4">
-                <h3 className="text-lg font-bold text-white flex items-center space-x-2">
-                  <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                  <span>JUDGING RUBRIC & WEIGHTS</span>
-                </h3>
-                <div className="space-y-3">
-                  <div className="bg-[#0b0d13] p-4 rounded-xl border border-[#1a1f2c] flex justify-between items-center">
-                    <div>
-                      <p className="font-bold text-sm text-white">Technical Architecture & Execution</p>
-                      <p className="text-xs text-neutral-400 mt-1">Code elegance, system performance, offline fidelity</p>
-                    </div>
-                    <span className="text-xs font-mono font-bold px-2 py-1 bg-[#1a1f2c] rounded text-[#ff5500]">40%</span>
-                  </div>
-                  <div className="bg-[#0b0d13] p-4 rounded-xl border border-[#1a1f2c] flex justify-between items-center">
-                    <div>
-                      <p className="font-bold text-sm text-white">Innovation & Novelty</p>
-                      <p className="text-xs text-neutral-400 mt-1">Creative breakthroughs and unique engineering solutions</p>
-                    </div>
-                    <span className="text-xs font-mono font-bold px-2 py-1 bg-[#1a1f2c] rounded text-[#ff5500]">30%</span>
-                  </div>
-                  <div className="bg-[#0b0d13] p-4 rounded-xl border border-[#1a1f2c] flex justify-between items-center">
-                    <div>
-                      <p className="font-bold text-sm text-white">Design & Usability (UI/UX)</p>
-                      <p className="text-xs text-neutral-400 mt-1">Simplicity, keyboard accessibility, visual polish</p>
-                    </div>
-                    <span className="text-xs font-mono font-bold px-2 py-1 bg-[#1a1f2c] rounded text-[#ff5500]">30%</span>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
         )}
 
         {/* ============================================================ */}
-        {/* TAB 2: PROJECT GALLERY & COMMUNITY VOTING */}
+        {/* TAB 2: PROJECT SHOWCASE GALLERY & VOTING */}
         {/* ============================================================ */}
         {activeTab === 'gallery' && (
           <div className="space-y-8">
-            {/* Gallery Controls Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#10131c] border border-[#1e2330] p-6 rounded-2xl">
+            <div className="border-b border-[#242326] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-black tracking-tight text-white">PROJECT SHOWCASE</h2>
-                <p className="text-xs text-neutral-400 font-mono mt-1">
-                  Discover published projects, test live demos, and vote for community favorites
+                <h2 className="text-xl font-bold tracking-wider text-[#f1f0ed] uppercase flex items-center space-x-2">
+                  <Layers className="w-5 h-5 text-[#a98be8]" />
+                  <span>PROJECT SHOWCASE GALLERY</span>
+                </h2>
+                <p className="text-xs text-[#c8c6c3] mt-1">
+                  Explore verified submissions, inspect repositories, join discussions, and cast community votes.
                 </p>
               </div>
 
-              {/* Search Bar & Track Filter */}
+              {/* Filters */}
               <div className="flex flex-wrap items-center gap-3">
-                <div className="relative">
-                  <Search className="w-4 h-4 text-neutral-500 absolute left-3 top-3" />
+                <div className="flex items-center bg-[#0d0d0d] border border-[#242326] px-3 py-2 text-xs">
+                  <Search className="w-3.5 h-3.5 text-neutral-500 mr-2" />
                   <input
                     type="text"
-                    placeholder="Search projects or tech..."
+                    placeholder="Search by title, tag..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="bg-[#090a0f] border border-[#1e2330] focus:border-[#ff5500] text-xs font-mono text-white pl-9 pr-4 py-2.5 rounded-xl outline-none w-56 transition"
+                    className="bg-transparent text-xs text-[#f1f0ed] outline-none placeholder-neutral-600 w-40"
                   />
                 </div>
 
                 <select
                   value={selectedTrack}
                   onChange={(e) => setSelectedTrack(e.target.value)}
-                  className="bg-[#090a0f] border border-[#1e2330] text-xs font-mono text-neutral-300 px-3 py-2.5 rounded-xl outline-none"
+                  className="bg-[#0d0d0d] border border-[#242326] text-xs text-[#c8c6c3] px-3 py-2 outline-none"
                 >
                   <option value="">All Tracks</option>
                   {(eventData?.tracks || []).map(t => (
@@ -834,25 +772,24 @@ export default function App() {
 
             {/* Gallery Cards Grid */}
             {loading ? (
-              <div className="text-center py-20 text-neutral-400 font-mono">
-                <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#ff5500] mb-3" />
-                Loading showcase submissions...
+              <div className="text-center py-20 text-neutral-500 font-mono text-xs">
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto text-[#a98be8] mb-3" />
+                LOADING PROJECT SUBMISSIONS...
               </div>
             ) : gallery.length === 0 ? (
-              <div className="text-center py-20 bg-[#10131c] border border-[#1e2330] rounded-2xl">
-                <p className="text-neutral-400 font-mono">No matching submissions found.</p>
+              <div className="text-center py-20 border border-[#242326] bg-[#0c0c0e]">
+                <p className="text-neutral-500 text-xs">No matching projects found.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {gallery.map((project) => (
                   <div
                     key={project.id}
-                    className="bg-[#10131c] border border-[#1e2330] hover:border-[#ff5500]/50 rounded-2xl p-6 flex flex-col justify-between transition duration-300 group shadow-lg"
+                    className="bg-[#0c0c0e] border border-[#242326] hover:border-[#3a393b] p-6 flex flex-col justify-between space-y-4 transition"
                   >
                     <div className="space-y-4">
-                      {/* Track Pill & Links */}
                       <div className="flex items-center justify-between">
-                        <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-[#ff5500]/10 text-[#ff5500] border border-[#ff5500]/20">
+                        <span className="px-2 py-0.5 text-[9px] font-mono text-[#a98be8] border border-[#a98be8]/30 bg-[#a98be8]/10 uppercase tracking-wider">
                           {project.track?.name || 'GENERAL TRACK'}
                         </span>
                         <div className="flex items-center space-x-2">
@@ -861,8 +798,8 @@ export default function App() {
                               href={project.repoUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="p-1.5 bg-[#181c27] hover:bg-[#252b3b] text-neutral-300 rounded-lg transition"
-                              title="GitHub Repository"
+                              className="p-1.5 border border-[#242326] hover:border-[#a98be8] text-neutral-400 hover:text-white transition"
+                              title="GitHub Source"
                             >
                               <Github className="w-3.5 h-3.5" />
                             </a>
@@ -872,7 +809,7 @@ export default function App() {
                               href={project.demoUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="p-1.5 bg-[#181c27] hover:bg-[#252b3b] text-neutral-300 rounded-lg transition"
+                              className="p-1.5 border border-[#242326] hover:border-[#a98be8] text-neutral-400 hover:text-white transition"
                               title="Live Demo"
                             >
                               <ExternalLink className="w-3.5 h-3.5" />
@@ -881,52 +818,43 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Title & Tagline */}
                       <div>
-                        <h3 className="text-xl font-black text-white group-hover:text-[#ff5500] transition">
-                          {project.title}
-                        </h3>
-                        <p className="text-xs text-neutral-400 mt-1 line-clamp-2">{project.tagline}</p>
+                        <h3 className="text-lg font-bold text-[#f1f0ed]">{project.title}</h3>
+                        <p className="text-xs text-[#c8c6c3] mt-1 leading-relaxed">{project.tagline}</p>
                       </div>
 
-                      {/* Tech Stack Pills */}
+                      {/* Tech stack pills */}
                       <div className="flex flex-wrap gap-1.5 pt-1">
                         {(project.techStack || []).map((tech, idx) => (
                           <span
                             key={idx}
-                            className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#161a24] text-neutral-300 border border-[#22293a]"
+                            className="px-2 py-0.5 text-[9px] font-mono text-neutral-400 border border-[#1f1e21] bg-[#090909]"
                           >
                             {tech}
                           </span>
                         ))}
                       </div>
 
-                      {/* Team Members List */}
-                      <div className="pt-2 border-t border-[#181c27] flex items-center justify-between text-xs text-neutral-400">
-                        <div className="flex items-center space-x-2">
-                          <Users className="w-3.5 h-3.5 text-neutral-500" />
-                          <span className="font-semibold text-neutral-300">{project.team?.name}</span>
-                        </div>
-                        <span className="font-mono text-[10px] text-neutral-500">
-                          {project.team?.members?.length || 1} Member(s)
-                        </span>
+                      <div className="pt-2 border-t border-[#1a191d] flex items-center justify-between text-xs text-neutral-500">
+                        <span className="font-semibold text-neutral-400">Team: {project.team?.name}</span>
+                        <span>{project.team?.members?.length || 1} Member(s)</span>
                       </div>
                     </div>
 
-                    {/* Discuss & Community Vote Action Buttons */}
-                    <div className="pt-5 mt-4 border-t border-[#181c27] grid grid-cols-2 gap-3">
+                    {/* Actions */}
+                    <div className="pt-4 border-t border-[#1a191d] grid grid-cols-2 gap-3">
                       <button
                         onClick={() => openProjectComments(project)}
-                        className="py-2.5 rounded-xl font-mono text-xs font-bold bg-[#141824] hover:bg-[#202738] text-neutral-300 hover:text-white transition border border-[#232a3d] flex items-center justify-center space-x-1.5"
+                        className="py-2.5 bg-[#121118] hover:bg-[#1c1a26] text-[#c8c6c3] hover:text-[#f1f0ed] border border-[#242326] text-xs font-mono tracking-wider transition uppercase flex items-center justify-center space-x-1.5"
                       >
-                        <MessageSquare className="w-3.5 h-3.5 text-[#ff5500]" />
+                        <MessageSquare className="w-3.5 h-3.5 text-[#a98be8]" />
                         <span>DISCUSS</span>
                       </button>
                       <button
                         onClick={() => handleCommunityVote(project.id)}
-                        className="py-2.5 rounded-xl font-mono text-xs font-bold bg-[#1a1f2c] hover:bg-[#ff5500] text-white hover:text-black transition border border-[#262d3e] hover:border-[#ff5500] flex items-center justify-center space-x-1.5"
+                        className="py-2.5 bg-[#bca1ee] hover:bg-[#caaefc] text-[#161218] font-mono text-xs font-bold tracking-wider transition uppercase flex items-center justify-center space-x-1.5"
                       >
-                        <Vote className="w-3.5 h-3.5 text-[#ff5500] group-hover:text-black" />
+                        <Vote className="w-3.5 h-3.5" />
                         <span>VOTE</span>
                       </button>
                     </div>
@@ -938,50 +866,49 @@ export default function App() {
         )}
 
         {/* ============================================================ */}
-        {/* TAB 3: LIVE LEADERBOARDS & MULTI-MODAL RANKINGS */}
+        {/* TAB 3: LEADERBOARD & STATISTICAL NORMALIZATION */}
         {/* ============================================================ */}
         {activeTab === 'leaderboard' && (
           <div className="space-y-8">
-            {/* Leaderboard Header & Mode Switcher */}
-            <div className="bg-[#10131c] border border-[#1e2330] p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="border-b border-[#242326] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-black tracking-tight text-white flex items-center space-x-2">
-                  <Trophy className="w-6 h-6 text-amber-400" />
+                <h2 className="text-xl font-bold tracking-wider text-[#f1f0ed] uppercase flex items-center space-x-2">
+                  <Trophy className="w-5 h-5 text-[#a98be8]" />
                   <span>TOURNAMENT STANDINGS</span>
                 </h2>
-                <p className="text-xs text-neutral-400 font-mono mt-1">
-                  Live rankings with statistical Z-Score bias mitigation
+                <p className="text-xs text-[#c8c6c3] mt-1">
+                  Dynamic rankings calibrated across statistical Z-Score, raw arithmetic means, and popular ballots.
                 </p>
               </div>
 
               {/* Mode Tabs */}
-              <div className="flex items-center space-x-2 bg-[#090a0f] p-1.5 rounded-xl border border-[#1e2330]">
+              <div className="flex items-center space-x-1 border border-[#242326] p-1 bg-[#0c0c0e]">
                 <button
                   onClick={() => setLeaderboardMode('normalized')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition ${
+                  className={`px-3 py-1.5 text-xs font-mono tracking-wider transition uppercase ${
                     leaderboardMode === 'normalized'
-                      ? 'bg-[#ff5500] text-black shadow'
-                      : 'text-neutral-400 hover:text-white'
+                      ? 'bg-[#bca1ee] text-[#161218] font-bold'
+                      : 'text-[#c8c6c3] hover:text-[#f1f0ed]'
                   }`}
                 >
-                  ⚡ Z-SCORE (CALIBRATED)
+                  ⚡ Z-SCORE
                 </button>
                 <button
                   onClick={() => setLeaderboardMode('raw')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition ${
+                  className={`px-3 py-1.5 text-xs font-mono tracking-wider transition uppercase ${
                     leaderboardMode === 'raw'
-                      ? 'bg-[#ff5500] text-black shadow'
-                      : 'text-neutral-400 hover:text-white'
+                      ? 'bg-[#bca1ee] text-[#161218] font-bold'
+                      : 'text-[#c8c6c3] hover:text-[#f1f0ed]'
                   }`}
                 >
                   📊 RAW AVERAGE
                 </button>
                 <button
                   onClick={() => setLeaderboardMode('community')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition ${
+                  className={`px-3 py-1.5 text-xs font-mono tracking-wider transition uppercase ${
                     leaderboardMode === 'community'
-                      ? 'bg-[#ff5500] text-black shadow'
-                      : 'text-neutral-400 hover:text-white'
+                      ? 'bg-[#bca1ee] text-[#161218] font-bold'
+                      : 'text-[#c8c6c3] hover:text-[#f1f0ed]'
                   }`}
                 >
                   🗳️ COMMUNITY
@@ -990,85 +917,54 @@ export default function App() {
             </div>
 
             {/* Leaderboard Table */}
-            <div className="bg-[#10131c] border border-[#1e2330] rounded-2xl overflow-hidden shadow-xl">
+            <div className="border border-[#242326] bg-[#0c0c0e] overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-[#1e2330] bg-[#0c0e14] text-[11px] font-mono text-neutral-400 uppercase tracking-wider">
+                    <tr className="border-b border-[#242326] bg-[#090909] text-[10px] font-mono text-[#c8c6c3] uppercase tracking-wider">
                       <th className="py-4 px-6">Rank</th>
                       <th className="py-4 px-6">Project / Team</th>
                       <th className="py-4 px-6">Track</th>
                       <th className="py-4 px-6 text-right">
-                        {leaderboardMode === 'normalized'
-                          ? 'Z-Score'
-                          : leaderboardMode === 'raw'
-                          ? 'Raw Mean'
-                          : 'Votes'}
+                        {leaderboardMode === 'normalized' ? 'Calibrated Z-Score' : leaderboardMode === 'raw' ? 'Raw Score Mean' : 'Community Ballots'}
                       </th>
                       <th className="py-4 px-6 text-right">Evals</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#181c27] text-sm">
+                  <tbody className="divide-y divide-[#1a191d]">
                     {leaderboard.map((entry) => (
-                      <tr key={entry.id} className="hover:bg-[#141824] transition duration-150">
-                        {/* Rank Badge */}
-                        <td className="py-4 px-6 font-mono font-black text-base">
-                          {entry.rank === 1 ? (
-                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-400/10 text-amber-400 border border-amber-400/30">
-                              🥇
-                            </span>
-                          ) : entry.rank === 2 ? (
-                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-neutral-300/10 text-neutral-300 border border-neutral-300/30">
-                              🥈
-                            </span>
-                          ) : entry.rank === 3 ? (
-                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-700/10 text-amber-600 border border-amber-700/30">
-                              🥉
-                            </span>
-                          ) : (
-                            <span className="text-neutral-500 pl-2">#{entry.rank}</span>
-                          )}
-                        </td>
-
-                        {/* Title & Team */}
-                        <td className="py-4 px-6">
-                          <p className="font-bold text-white hover:text-[#ff5500] transition cursor-pointer">
-                            {entry.title}
-                          </p>
-                          <p className="text-xs text-neutral-400 font-mono mt-0.5">
-                            Team: <span className="text-neutral-300 font-semibold">{entry.team?.name}</span>
-                          </p>
-                        </td>
-
-                        {/* Track */}
-                        <td className="py-4 px-6">
-                          <span className="px-2.5 py-1 rounded-md text-[10px] font-mono bg-[#161a24] text-neutral-300 border border-[#22293a]">
-                            {entry.track?.name || 'General'}
+                      <tr key={entry.id} className="hover:bg-[#121118] transition">
+                        <td className="py-4 px-6 font-mono text-sm font-bold">
+                          <span className={`px-2 py-0.5 text-xs ${
+                            entry.rank === 1
+                              ? 'bg-[#a98be8]/20 text-[#a98be8] border border-[#a98be8]/40'
+                              : 'text-neutral-400'
+                          }`}>
+                            #{entry.rank}
                           </span>
                         </td>
-
-                        {/* Score Metric */}
-                        <td className="py-4 px-6 text-right font-mono font-bold text-base">
+                        <td className="py-4 px-6">
+                          <p className="font-bold text-sm text-[#f1f0ed]">{entry.title}</p>
+                          <p className="text-[11px] text-neutral-500 font-mono">Team: {entry.team?.name}</p>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className="text-[10px] text-neutral-400 border border-[#242326] px-2 py-0.5">
+                            {entry.track?.name || 'GENERAL'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-right font-mono text-sm font-bold">
                           {leaderboardMode === 'normalized' ? (
-                            <span
-                              className={
-                                entry.scores.normalizedZScore >= 0
-                                  ? 'text-emerald-400'
-                                  : 'text-amber-400'
-                              }
-                            >
+                            <span className="text-[#a98be8]">
                               {entry.scores.normalizedZScore > 0 ? '+' : ''}
                               {entry.scores.normalizedZScore.toFixed(2)}
                             </span>
                           ) : leaderboardMode === 'raw' ? (
-                            <span className="text-white">{entry.scores.rawScoreMean.toFixed(2)}</span>
+                            <span className="text-[#f1f0ed]">{entry.scores.rawScoreMean.toFixed(2)}</span>
                           ) : (
-                            <span className="text-[#ff5500]">{entry.scores.communityVotesCount} votes</span>
+                            <span className="text-[#9eea9a]">{entry.scores.communityVotesCount} votes</span>
                           )}
                         </td>
-
-                        {/* Evaluations Count */}
-                        <td className="py-4 px-6 text-right font-mono text-xs text-neutral-400">
+                        <td className="py-4 px-6 text-right text-xs text-neutral-500">
                           {entry.scores.evaluationsCount || 3}
                         </td>
                       </tr>
@@ -1081,57 +977,54 @@ export default function App() {
         )}
 
         {/* ============================================================ */}
-        {/* TAB: ANNOUNCEMENTS & ORGANIZER BROADCASTS */}
+        {/* TAB 4: EVENT ANNOUNCEMENTS */}
         {/* ============================================================ */}
         {activeTab === 'announcements' && (
           <div className="space-y-8">
-            <div className="bg-[#10131c] border border-[#1e2330] p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-black tracking-tight text-white flex items-center space-x-2">
-                  <Megaphone className="w-6 h-6 text-[#ff5500]" />
-                  <span>EVENT ANNOUNCEMENTS</span>
-                </h2>
-                <p className="text-xs text-neutral-400 font-mono mt-1">
-                  Official updates and broadcasts from tournament organizers
-                </p>
-              </div>
+            <div className="border-b border-[#242326] pb-6">
+              <h2 className="text-xl font-bold tracking-wider text-[#f1f0ed] uppercase flex items-center space-x-2">
+                <Megaphone className="w-5 h-5 text-[#a98be8]" />
+                <span>OFFICIAL EVENT ANNOUNCEMENTS</span>
+              </h2>
+              <p className="text-xs text-[#c8c6c3] mt-1">
+                Broadcasts and updates directly from tournament organizers.
+              </p>
             </div>
 
-            {/* Organizer Announcement Composer */}
+            {/* Organizer composer */}
             {(currentUser?.role === 'ORGANIZER' || currentUser?.role === 'ADMIN') && (
-              <div className="bg-[#121622] border border-[#ff5500]/30 p-6 rounded-2xl space-y-4 shadow-xl">
-                <h3 className="text-sm font-mono font-bold text-[#ff5500] flex items-center space-x-2">
-                  <Megaphone className="w-4 h-4" />
-                  <span>BROADCAST NEW ANNOUNCEMENT (ORGANIZER)</span>
-                </h3>
+              <div className="border border-[#a98be8]/40 bg-[#0d0c12] p-6 space-y-4">
+                <p className="text-xs font-mono font-bold text-[#a98be8] uppercase tracking-wider">
+                  BROADCAST NEW ANNOUNCEMENT
+                </p>
                 <form onSubmit={handleCreateAnnouncement} className="space-y-4">
                   <input
                     type="text"
-                    placeholder="Announcement headline..."
+                    placeholder="Announcement title..."
                     value={announcementTitle}
                     onChange={(e) => setAnnouncementTitle(e.target.value)}
-                    className="w-full bg-[#090a0f] border border-[#1e2330] rounded-xl px-4 py-2.5 text-xs font-mono text-white outline-none focus:border-[#ff5500]"
+                    className="w-full bg-[#090909] border border-[#242326] px-4 py-2.5 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8]"
                   />
                   <textarea
                     rows={3}
-                    placeholder="Full announcement details..."
+                    placeholder="Announcement message content..."
                     value={announcementContent}
                     onChange={(e) => setAnnouncementContent(e.target.value)}
-                    className="w-full bg-[#090a0f] border border-[#1e2330] rounded-xl px-4 py-2.5 text-xs font-mono text-white outline-none focus:border-[#ff5500]"
+                    className="w-full bg-[#090909] border border-[#242326] px-4 py-2.5 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8]"
                   />
                   <div className="flex items-center justify-between">
-                    <label className="flex items-center space-x-2 text-xs font-mono text-neutral-300 cursor-pointer">
+                    <label className="flex items-center space-x-2 text-xs text-[#c8c6c3] cursor-pointer">
                       <input
                         type="checkbox"
                         checked={announcementPinned}
                         onChange={(e) => setAnnouncementPinned(e.target.checked)}
-                        className="accent-[#ff5500]"
+                        className="accent-[#a98be8]"
                       />
-                      <span>Pin to Top of Feed</span>
+                      <span>Pin Announcement to Top</span>
                     </label>
                     <button
                       type="submit"
-                      className="px-6 py-2.5 rounded-xl bg-[#ff5500] hover:bg-[#ff661a] text-black font-mono font-bold text-xs transition flex items-center space-x-2"
+                      className="px-6 py-2.5 bg-[#bca1ee] hover:bg-[#caaefc] text-[#161218] font-bold text-xs tracking-wider uppercase flex items-center space-x-1.5"
                     >
                       <Send className="w-3.5 h-3.5" />
                       <span>BROADCAST</span>
@@ -1141,132 +1034,219 @@ export default function App() {
               </div>
             )}
 
-            {/* Announcements Feed */}
-            {loading ? (
-              <div className="text-center py-20 text-neutral-400 font-mono">
-                <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#ff5500] mb-3" />
-                Loading announcements...
-              </div>
-            ) : announcements.length === 0 ? (
-              <div className="text-center py-20 bg-[#10131c] border border-[#1e2330] rounded-2xl">
-                <p className="text-neutral-400 font-mono">No announcements posted yet.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {announcements.map((a) => (
-                  <div
-                    key={a.id}
-                    className={`bg-[#10131c] border p-6 rounded-2xl space-y-3 transition ${
-                      a.isPinned ? 'border-amber-400/50 bg-[#141724]' : 'border-[#1e2330]'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-2">
-                        {a.isPinned && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-400/10 text-amber-400 border border-amber-400/30 flex items-center space-x-1">
-                            <Pin className="w-3 h-3" />
-                            <span>PINNED</span>
-                          </span>
-                        )}
-                        <h3 className="text-lg font-bold text-white">{a.title}</h3>
-                      </div>
-                      <span className="text-[11px] font-mono text-neutral-500">
-                        {new Date(a.createdAt).toLocaleDateString()}
+            {/* Feed */}
+            {announcements.map((a) => (
+              <div
+                key={a.id}
+                className={`p-6 border ${a.isPinned ? 'border-[#a98be8]/50 bg-[#100f16]' : 'border-[#242326] bg-[#0c0c0e]'} space-y-3`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-2">
+                    {a.isPinned && (
+                      <span className="px-2 py-0.5 text-[9px] font-mono font-bold bg-[#a98be8]/10 text-[#a98be8] border border-[#a98be8]/30 uppercase">
+                        PINNED
                       </span>
-                    </div>
-                    <p className="text-sm text-neutral-300 leading-relaxed whitespace-pre-wrap">{a.content}</p>
-                    <div className="pt-2 border-t border-[#181c27] flex items-center justify-between text-xs text-neutral-500 font-mono">
-                      <span>Posted by {a.author?.name || 'Organizer'}</span>
-                    </div>
+                    )}
+                    <h3 className="text-base font-bold text-[#f1f0ed]">{a.title}</h3>
                   </div>
-                ))}
+                  <span className="text-[10px] text-neutral-500">{new Date(a.createdAt).toLocaleDateString()}</span>
+                </div>
+                <p className="text-xs text-[#c8c6c3] leading-relaxed whitespace-pre-wrap">{a.content}</p>
+                <div className="pt-2 border-t border-[#1a191d] text-[10px] text-neutral-500">
+                  Posted by {a.author?.name || 'Organizer'}
+                </div>
               </div>
-            )}
+            ))}
           </div>
         )}
 
         {/* ============================================================ */}
-        {/* TAB 4: JUDGING EVALUATION QUEUE & RUBRIC SCORING */}
+        {/* TAB 5: HACKER DIRECTORY & MATCHMAKING (Phase 18) */}
+        {/* ============================================================ */}
+        {activeTab === 'hackers' && (
+          <div className="space-y-8">
+            <div className="border-b border-[#242326] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold tracking-wider text-[#f1f0ed] uppercase flex items-center space-x-2">
+                  <Users className="w-5 h-5 text-[#a98be8]" />
+                  <span>HACKER DIRECTORY & MATCHMAKING</span>
+                </h2>
+                <p className="text-xs text-[#c8c6c3] mt-1">
+                  Discover builders looking for teams and connect with recruiting squads.
+                </p>
+              </div>
+
+              <div className="flex items-center bg-[#0d0d0d] border border-[#242326] px-3 py-2 text-xs">
+                <Search className="w-3.5 h-3.5 text-neutral-500 mr-2" />
+                <input
+                  type="text"
+                  placeholder="Filter by skill (e.g. Rust, React)..."
+                  value={hackerSkillFilter}
+                  onChange={(e) => setHackerSkillFilter(e.target.value)}
+                  className="bg-transparent text-xs text-[#f1f0ed] outline-none placeholder-neutral-600 w-48"
+                />
+              </div>
+            </div>
+
+            {/* Two Column Layout: Hackers on Left, Recruiting Teams on Right */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Left: Hackers looking for squad */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-[#f1f0ed] tracking-wider uppercase flex items-center space-x-2">
+                  <UserCheck className="w-4 h-4 text-[#9eea9a]" />
+                  <span>AVAILABLE BUILDERS ({hackers.length})</span>
+                </h3>
+
+                <div className="space-y-4">
+                  {hackers.map((hacker) => (
+                    <div key={hacker.id} className="p-5 border border-[#242326] bg-[#0c0c0e] space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-bold text-sm text-[#f1f0ed]">{hacker.name}</p>
+                          {hacker.githubUsername && (
+                            <p className="text-[10px] text-neutral-500">@{hacker.githubUsername}</p>
+                          )}
+                        </div>
+                        <span className="px-2 py-0.5 text-[9px] font-mono text-[#9eea9a] border border-[#9eea9a]/30 bg-[#9eea9a]/10 uppercase">
+                          LOOKING FOR TEAM
+                        </span>
+                      </div>
+
+                      {hacker.bio && <p className="text-xs text-[#c8c6c3] leading-relaxed">{hacker.bio}</p>}
+
+                      {/* Skills */}
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {(hacker.skills || []).map((skill, idx) => (
+                          <span key={idx} className="px-2 py-0.5 text-[9px] text-[#a98be8] border border-[#242326] bg-[#121118]">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Right: Recruiting Teams */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-[#f1f0ed] tracking-wider uppercase flex items-center space-x-2">
+                  <UserPlus className="w-4 h-4 text-[#a98be8]" />
+                  <span>RECRUITING SQUADS ({recruitingTeams.length})</span>
+                </h3>
+
+                <div className="space-y-4">
+                  {recruitingTeams.map((team) => (
+                    <div key={team.id} className="p-5 border border-[#242326] bg-[#0c0c0e] space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-bold text-sm text-[#f1f0ed]">{team.name}</p>
+                          <p className="text-[10px] text-neutral-500">{team.membersCount} / {team.maxMembers} Members</p>
+                        </div>
+                        <button
+                          onClick={() => setSelectedTeamForApply(team)}
+                          className="px-3 py-1 bg-[#bca1ee] hover:bg-[#caaefc] text-[#161218] text-[10px] font-bold tracking-wider uppercase"
+                        >
+                          APPLY TO JOIN
+                        </button>
+                      </div>
+
+                      {team.description && <p className="text-xs text-[#c8c6c3] leading-relaxed">{team.description}</p>}
+
+                      {/* Skills needed */}
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {(team.skillsNeeded || []).map((skill, idx) => (
+                          <span key={idx} className="px-2 py-0.5 text-[9px] text-neutral-400 border border-[#242326] bg-[#090909]">
+                            Needed: {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* TAB 6: JUDGING EVALUATION QUEUE */}
         {/* ============================================================ */}
         {activeTab === 'judging' && (
           <div className="space-y-8">
             {!currentUser ? (
-              <div className="bg-[#10131c] border border-[#1e2330] rounded-2xl p-12 text-center max-w-lg mx-auto space-y-4">
-                <Lock className="w-10 h-10 text-[#ff5500] mx-auto" />
-                <h3 className="text-xl font-bold text-white">JUDGE AUTHENTICATION REQUIRED</h3>
-                <p className="text-xs text-neutral-400 leading-relaxed font-mono">
+              <div className="border border-[#242326] bg-[#0c0c0e] p-12 text-center max-w-lg mx-auto space-y-4">
+                <Lock className="w-8 h-8 text-[#a98be8] mx-auto" />
+                <h3 className="text-base font-bold text-[#f1f0ed] uppercase tracking-wider">JUDGE AUTHENTICATION REQUIRED</h3>
+                <p className="text-xs text-[#c8c6c3] leading-relaxed">
                   Sign in with an official Judge or Organizer account to view your evaluation queue and score submissions.
                 </p>
                 <button
                   onClick={() => setShowAuthModal(true)}
-                  className="px-6 py-2.5 rounded-xl bg-[#ff5500] text-black font-mono text-xs font-bold hover:bg-[#ff661a] transition"
+                  className="px-6 py-2.5 bg-[#bca1ee] text-[#161218] text-xs font-bold uppercase tracking-wider"
                 >
-                  OPEN SIGN IN
+                  SIGN IN ↗
                 </button>
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Left: Queue List */}
-                <div className="bg-[#10131c] border border-[#1e2330] p-6 rounded-2xl space-y-4">
-                  <h3 className="text-lg font-bold text-white flex items-center justify-between">
-                    <span>MY EVALUATION QUEUE</span>
-                    <span className="text-xs font-mono text-[#ff5500]">{judgeAssignments.length} Assigned</span>
+                <div className="border border-[#242326] bg-[#0c0c0e] p-6 space-y-4">
+                  <h3 className="text-xs font-bold text-[#f1f0ed] tracking-wider uppercase flex justify-between items-center">
+                    <span>EVALUATION QUEUE</span>
+                    <span className="text-[#a98be8]">{judgeAssignments.length} Assigned</span>
                   </h3>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {judgeAssignments.map((a) => (
                       <div
                         key={a.id}
                         onClick={() => setSelectedAssignment(a)}
-                        className={`p-4 rounded-xl border cursor-pointer transition ${
+                        className={`p-4 border cursor-pointer transition ${
                           selectedAssignment?.id === a.id
-                            ? 'bg-[#1a1f2e] border-[#ff5500]'
-                            : 'bg-[#0b0d13] border-[#1a1f2c] hover:border-neutral-700'
+                            ? 'bg-[#15141c] border-[#a98be8]'
+                            : 'bg-[#090909] border-[#242326] hover:border-neutral-700'
                         }`}
                       >
                         <div className="flex justify-between items-start">
-                          <p className="font-bold text-sm text-white">{a.submission?.title}</p>
-                          <span
-                            className={`text-[9px] font-mono px-2 py-0.5 rounded-full ${
-                              a.status === 'COMPLETED'
-                                ? 'bg-emerald-400/10 text-emerald-400 border border-emerald-400/20'
-                                : 'bg-amber-400/10 text-amber-400 border border-amber-400/20'
-                            }`}
-                          >
+                          <p className="font-bold text-xs text-[#f1f0ed]">{a.submission?.title}</p>
+                          <span className={`text-[8px] font-mono px-1.5 py-0.5 border ${
+                            a.status === 'COMPLETED'
+                              ? 'border-[#9eea9a]/30 text-[#9eea9a] bg-[#9eea9a]/10'
+                              : 'border-amber-400/30 text-amber-400 bg-amber-400/10'
+                          }`}>
                             {a.status}
                           </span>
                         </div>
-                        <p className="text-xs text-neutral-400 mt-1 font-mono">
-                          Team: {a.submission?.team?.name}
-                        </p>
+                        <p className="text-[10px] text-neutral-500 mt-1">Team: {a.submission?.team?.name}</p>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {/* Right: Rubric Scoring Form */}
-                <div className="lg:col-span-2 bg-[#10131c] border border-[#1e2330] p-8 rounded-2xl space-y-6">
+                <div className="lg:col-span-2 border border-[#242326] bg-[#0c0c0e] p-8 space-y-6">
                   {selectedAssignment ? (
                     <form onSubmit={handleScoreSubmit} className="space-y-6">
-                      <div className="border-b border-[#1e2330] pb-4">
-                        <span className="text-[10px] font-mono text-[#ff5500] font-bold">
+                      <div className="border-b border-[#242326] pb-4">
+                        <span className="text-[10px] text-[#a98be8] font-bold tracking-widest uppercase">
                           EVALUATING SUBMISSION
                         </span>
-                        <h2 className="text-2xl font-black text-white">{selectedAssignment.submission?.title}</h2>
-                        <p className="text-xs text-neutral-400 mt-1">{selectedAssignment.submission?.tagline}</p>
+                        <h2 className="text-xl font-bold text-[#f1f0ed] mt-1">{selectedAssignment.submission?.title}</h2>
+                        <p className="text-xs text-[#c8c6c3] mt-1">{selectedAssignment.submission?.tagline}</p>
                       </div>
 
                       {/* Rubric Criteria Sliders */}
                       <div className="space-y-6">
                         {(selectedAssignment.event?.rubricCriteria || [
-                          { id: 'c1', name: 'Technical Depth (40%)', minScore: 1, maxScore: 10 },
-                          { id: 'c2', name: 'Innovation & Novelty (30%)', minScore: 1, maxScore: 10 },
-                          { id: 'c3', name: 'UI / UX Design Polish (30%)', minScore: 1, maxScore: 10 }
+                          { id: 'c1', name: 'Technical Depth (35%)', minScore: 1, maxScore: 10 },
+                          { id: 'c2', name: 'Innovation & Novelty (25%)', minScore: 1, maxScore: 10 },
+                          { id: 'c3', name: 'Offline Resilience (20%)', minScore: 1, maxScore: 10 },
+                          { id: 'c4', name: 'UI / UX Design Polish (20%)', minScore: 1, maxScore: 10 },
                         ]).map((crit) => (
-                          <div key={crit.id} className="bg-[#0b0d13] p-5 rounded-xl border border-[#1a1f2c] space-y-3">
-                            <div className="flex justify-between items-center">
-                              <label className="font-bold text-sm text-white">{crit.name}</label>
-                              <span className="font-mono text-sm font-black text-[#ff5500]">
+                          <div key={crit.id} className="bg-[#090909] p-5 border border-[#242326] space-y-3">
+                            <div className="flex justify-between items-center text-xs">
+                              <label className="font-bold text-[#f1f0ed]">{crit.name}</label>
+                              <span className="text-[#a98be8] font-bold">
                                 {scoresInput[crit.id] || 8.0} / {crit.maxScore || 10}
                               </span>
                             </div>
@@ -1278,7 +1258,7 @@ export default function App() {
                               step="0.5"
                               value={scoresInput[crit.id] || 8.0}
                               onChange={(e) => setScoresInput({ ...scoresInput, [crit.id]: e.target.value })}
-                              className="w-full accent-[#ff5500] cursor-pointer"
+                              className="w-full accent-[#a98be8] cursor-pointer"
                             />
 
                             <input
@@ -1286,14 +1266,14 @@ export default function App() {
                               placeholder="Qualitative feedback comments..."
                               value={feedbackInput[crit.id] || ''}
                               onChange={(e) => setFeedbackInput({ ...feedbackInput, [crit.id]: e.target.value })}
-                              className="w-full bg-[#12151e] border border-[#1e2330] rounded-lg px-3 py-2 text-xs font-mono text-white outline-none focus:border-[#ff5500]"
+                              className="w-full bg-[#0c0c0e] border border-[#242326] px-3 py-2 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8]"
                             />
                           </div>
                         ))}
                       </div>
 
                       {scoreSuccess && (
-                        <div className="p-3 rounded-lg bg-emerald-400/10 border border-emerald-400/30 text-emerald-400 text-xs font-mono flex items-center space-x-2">
+                        <div className="p-3 border border-[#9eea9a]/30 bg-[#9eea9a]/10 text-[#9eea9a] text-xs flex items-center space-x-2">
                           <CheckCircle2 className="w-4 h-4" />
                           <span>{scoreSuccess}</span>
                         </div>
@@ -1301,13 +1281,13 @@ export default function App() {
 
                       <button
                         type="submit"
-                        className="w-full py-3 rounded-xl bg-[#ff5500] hover:bg-[#ff661a] text-black font-mono font-bold text-sm transition shadow-lg shadow-[#ff5500]/20"
+                        className="w-full py-3 bg-[#bca1ee] hover:bg-[#caaefc] text-[#161218] font-bold text-xs tracking-wider uppercase transition"
                       >
                         SUBMIT FINAL RUBRIC SCORES
                       </button>
                     </form>
                   ) : (
-                    <p className="text-neutral-400 font-mono text-center py-20">Select an assigned project from the queue.</p>
+                    <p className="text-neutral-500 text-xs text-center py-20">Select an assigned project from the queue.</p>
                   )}
                 </div>
               </div>
@@ -1319,12 +1299,12 @@ export default function App() {
       {/* Project Threaded Discussion Modal */}
       {discussionProject && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#10131c] border border-[#1e2330] rounded-3xl p-6 md:p-8 max-w-2xl w-full max-h-[85vh] flex flex-col space-y-6 shadow-2xl animate-scale-in">
-            <div className="flex justify-between items-center border-b border-[#1e2330] pb-4">
+          <div className="bg-[#0c0c0e] border border-[#242326] p-6 md:p-8 max-w-2xl w-full max-h-[85vh] flex flex-col space-y-6 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-[#242326] pb-4">
               <div>
-                <span className="text-[10px] font-mono text-[#ff5500] font-bold">PROJECT DISCUSSION</span>
-                <h3 className="text-xl font-bold text-white flex items-center space-x-2">
-                  <MessageSquare className="w-5 h-5 text-[#ff5500]" />
+                <span className="text-[10px] text-[#a98be8] font-bold tracking-widest uppercase">PROJECT DISCUSSION</span>
+                <h3 className="text-lg font-bold text-[#f1f0ed] flex items-center space-x-2">
+                  <MessageSquare className="w-4 h-4 text-[#a98be8]" />
                   <span>{discussionProject.title}</span>
                 </h3>
               </div>
@@ -1334,7 +1314,7 @@ export default function App() {
                   setReplyParentId(null);
                   setReplyParentAuthor('');
                 }}
-                className="text-neutral-400 hover:text-white text-lg font-bold p-1.5"
+                className="text-neutral-500 hover:text-white text-lg font-bold p-1"
               >
                 ✕
               </button>
@@ -1343,7 +1323,7 @@ export default function App() {
             {/* Comments List */}
             <div className="flex-1 overflow-y-auto space-y-4 pr-2">
               {commentsList.length === 0 ? (
-                <div className="text-center py-12 text-neutral-500 font-mono text-xs">
+                <div className="text-center py-12 text-neutral-500 text-xs">
                   No comments yet. Be the first to start the discussion!
                 </div>
               ) : (
@@ -1352,11 +1332,11 @@ export default function App() {
             </div>
 
             {/* Comment Composer */}
-            <div className="border-t border-[#1e2330] pt-4 space-y-2">
+            <div className="border-t border-[#242326] pt-4 space-y-2">
               {replyParentId && (
-                <div className="flex items-center justify-between text-xs font-mono bg-[#161a26] px-3 py-1.5 rounded-lg border border-[#22283a]">
+                <div className="flex items-center justify-between text-xs bg-[#121118] px-3 py-1.5 border border-[#242326]">
                   <span className="text-neutral-400">
-                    Replying to <strong className="text-white">{replyParentAuthor}</strong>
+                    Replying to <strong className="text-[#f1f0ed]">{replyParentAuthor}</strong>
                   </span>
                   <button
                     onClick={() => {
@@ -1372,16 +1352,16 @@ export default function App() {
               <form onSubmit={handlePostComment} className="flex gap-2">
                 <input
                   type="text"
-                  placeholder={currentUser ? (replyParentId ? "Write a reply..." : "Ask a question or share feedback...") : "Sign in to join the discussion"}
+                  placeholder={currentUser ? (replyParentId ? "Write a reply..." : "Ask a question or share feedback...") : "Sign in to join discussion"}
                   disabled={!currentUser}
                   value={commentInput}
                   onChange={(e) => setCommentInput(e.target.value)}
-                  className="flex-1 bg-[#090a0f] border border-[#1e2330] rounded-xl px-4 py-2.5 text-xs font-mono text-white outline-none focus:border-[#ff5500] disabled:opacity-50"
+                  className="flex-1 bg-[#090909] border border-[#242326] px-4 py-2.5 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8] disabled:opacity-50"
                 />
                 <button
                   type="submit"
                   disabled={!currentUser || !commentInput.trim()}
-                  className="px-5 py-2.5 rounded-xl bg-[#ff5500] hover:bg-[#ff661a] disabled:opacity-50 text-black font-mono font-bold text-xs transition flex items-center space-x-1.5"
+                  className="px-5 py-2.5 bg-[#bca1ee] hover:bg-[#caaefc] disabled:opacity-50 text-[#161218] font-bold text-xs tracking-wider uppercase transition flex items-center space-x-1.5"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>POST</span>
@@ -1392,18 +1372,59 @@ export default function App() {
         </div>
       )}
 
-      {/* Auth Modal */}
+      {/* Team Application Modal */}
+      {selectedTeamForApply && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0c0c0e] border border-[#242326] p-8 max-w-md w-full space-y-6 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-[#242326] pb-4">
+              <div>
+                <span className="text-[10px] text-[#a98be8] font-bold tracking-widest uppercase">SQUAD APPLICATION</span>
+                <h3 className="text-base font-bold text-[#f1f0ed]">{selectedTeamForApply.name}</h3>
+              </div>
+              <button
+                onClick={() => setSelectedTeamForApply(null)}
+                className="text-neutral-500 hover:text-white text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleApplyToTeam} className="space-y-4">
+              <div>
+                <label className="block text-xs text-[#c8c6c3] mb-1">Application Message</label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Introduce yourself and your skills..."
+                  value={applyMessage}
+                  onChange={(e) => setApplyMessage(e.target.value)}
+                  className="w-full bg-[#090909] border border-[#242326] px-4 py-2.5 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8]"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 bg-[#bca1ee] hover:bg-[#caaefc] text-[#161218] font-bold text-xs tracking-wider uppercase transition"
+              >
+                SUBMIT APPLICATION
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Auth Modal with Quick Demo Accounts */}
       {showAuthModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#10131c] border border-[#1e2330] rounded-3xl p-8 max-w-md w-full space-y-6 shadow-2xl animate-scale-in">
-            <div className="flex justify-between items-center border-b border-[#1e2330] pb-4">
-              <h3 className="text-xl font-bold text-white flex items-center space-x-2">
-                <LogIn className="w-5 h-5 text-[#ff5500]" />
-                <span>SIGN IN TO DOGFOOD</span>
+          <div className="bg-[#0c0c0e] border border-[#242326] p-8 max-w-md w-full space-y-6 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-[#242326] pb-4">
+              <h3 className="text-base font-bold text-[#f1f0ed] flex items-center space-x-2 tracking-wider uppercase">
+                <LogIn className="w-4 h-4 text-[#a98be8]" />
+                <span>SIGN IN TO DOGFOOD 2026</span>
               </h3>
               <button
                 onClick={() => setShowAuthModal(false)}
-                className="text-neutral-400 hover:text-white text-lg font-bold"
+                className="text-neutral-500 hover:text-white text-lg font-bold"
               >
                 ✕
               </button>
@@ -1411,69 +1432,69 @@ export default function App() {
 
             {/* Quick Login Test Accounts */}
             <div className="space-y-2">
-              <p className="text-[11px] font-mono text-neutral-400">ONE-CLICK DEMO ACCOUNTS:</p>
+              <p className="text-[10px] font-mono text-[#c8c6c3] tracking-widest uppercase">ONE-CLICK DEMO ACCOUNTS:</p>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('organizer@dogfood.test')}
-                  className="p-2.5 rounded-xl bg-[#161a26] border border-[#22283a] hover:border-[#ff5500] text-left text-xs font-mono transition"
+                  className="p-2.5 bg-[#121118] border border-[#242326] hover:border-[#a98be8] text-left text-xs transition"
                 >
-                  <p className="font-bold text-white">Organizer</p>
-                  <p className="text-[10px] text-[#ff5500]">Full Control</p>
+                  <p className="font-bold text-[#f1f0ed]">Organizer</p>
+                  <p className="text-[10px] text-[#a98be8]">Full Control</p>
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleQuickLogin('judge.dan@dogfood.test')}
-                  className="p-2.5 rounded-xl bg-[#161a26] border border-[#22283a] hover:border-[#ff5500] text-left text-xs font-mono transition"
+                  onClick={() => handleQuickLogin('judge1@dogfood.test')}
+                  className="p-2.5 bg-[#121118] border border-[#242326] hover:border-[#a98be8] text-left text-xs transition"
                 >
-                  <p className="font-bold text-white">Judge Dan</p>
+                  <p className="font-bold text-[#f1f0ed]">Judge Elena</p>
                   <p className="text-[10px] text-amber-400">Scoring Queue</p>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('alice@dogfood.test')}
-                  className="p-2.5 rounded-xl bg-[#161a26] border border-[#22283a] hover:border-[#ff5500] text-left text-xs font-mono transition"
+                  className="p-2.5 bg-[#121118] border border-[#242326] hover:border-[#a98be8] text-left text-xs transition"
                 >
-                  <p className="font-bold text-white">Alice (Leader)</p>
-                  <p className="text-[10px] text-emerald-400">HyperScale</p>
+                  <p className="font-bold text-[#f1f0ed]">Alice (Leader)</p>
+                  <p className="text-[10px] text-[#9eea9a]">Team Alpha</p>
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleQuickLogin('evan@dogfood.test')}
-                  className="p-2.5 rounded-xl bg-[#161a26] border border-[#22283a] hover:border-[#ff5500] text-left text-xs font-mono transition"
+                  onClick={() => handleQuickLogin('bob@dogfood.test')}
+                  className="p-2.5 bg-[#121118] border border-[#242326] hover:border-[#a98be8] text-left text-xs transition"
                 >
-                  <p className="font-bold text-white">Evan (Leader)</p>
-                  <p className="text-[10px] text-emerald-400">ZeroLag</p>
+                  <p className="font-bold text-[#f1f0ed]">Bob (Hacker)</p>
+                  <p className="text-[10px] text-[#9eea9a]">Participant</p>
                 </button>
               </div>
             </div>
 
-            <div className="relative flex py-2 items-center">
-              <div className="flex-grow border-t border-[#1e2330]"></div>
-              <span className="flex-shrink mx-4 text-[10px] font-mono text-neutral-500">OR EMAIL & PASSWORD</span>
-              <div className="flex-grow border-t border-[#1e2330]"></div>
+            <div className="relative flex py-1 items-center">
+              <div className="flex-grow border-t border-[#242326]"></div>
+              <span className="flex-shrink mx-3 text-[9px] font-mono text-neutral-500 uppercase tracking-wider">OR EMAIL</span>
+              <div className="flex-grow border-t border-[#242326]"></div>
             </div>
 
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="block text-xs font-mono text-neutral-400 mb-1">Email Address</label>
+                <label className="block text-[11px] text-[#c8c6c3] mb-1">Email Address</label>
                 <input
                   type="email"
                   required
                   value={authEmail}
                   onChange={(e) => setAuthEmail(e.target.value)}
-                  className="w-full bg-[#090a0f] border border-[#1e2330] rounded-xl px-4 py-2.5 text-xs font-mono text-white outline-none focus:border-[#ff5500]"
+                  className="w-full bg-[#090909] border border-[#242326] px-4 py-2.5 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-mono text-neutral-400 mb-1">Password</label>
+                <label className="block text-[11px] text-[#c8c6c3] mb-1">Password</label>
                 <input
                   type="password"
                   required
                   value={authPassword}
                   onChange={(e) => setAuthPassword(e.target.value)}
-                  className="w-full bg-[#090a0f] border border-[#1e2330] rounded-xl px-4 py-2.5 text-xs font-mono text-white outline-none focus:border-[#ff5500]"
+                  className="w-full bg-[#090909] border border-[#242326] px-4 py-2.5 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8]"
                 />
               </div>
 
@@ -1483,7 +1504,7 @@ export default function App() {
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-[#ff5500] hover:bg-[#ff661a] text-black font-mono font-bold text-sm transition"
+                className="w-full py-3 bg-[#bca1ee] hover:bg-[#caaefc] text-[#161218] font-bold text-xs tracking-wider uppercase transition"
               >
                 SIGN IN
               </button>
@@ -1492,13 +1513,13 @@ export default function App() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="border-t border-[#1e2330] py-6 px-8 flex flex-col sm:flex-row justify-between items-center text-xs font-mono text-neutral-500 bg-[#07080c] gap-4">
+      {/* Minimal Footer (DESIGN.md) */}
+      <footer className="border-t border-[#242326] py-6 px-8 flex flex-col sm:flex-row justify-between items-center text-[10px] font-mono text-[#c8c6c3] bg-[#090909] gap-4">
         <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 rounded-full bg-[#ff5500]"></div>
-          <span>DOGFOOD 2026 PLATFORM • TIER 1 & TIER 2 ACTIVE</span>
+          <span className="w-1.5 h-1.5 rounded-none bg-[#9eea9a]"></span>
+          <span>DOGFOOD 2026 PLATFORM // NEXERA ARCHITECTURE</span>
         </div>
-        <span>100% OFFLINE-FIRST • ZERO EXTERNAL RUNTIME CALLS</span>
+        <span>100% OFFLINE-FIRST // ZERO EXTERNAL RUNTIME DEPENDENCIES</span>
       </footer>
     </div>
   );

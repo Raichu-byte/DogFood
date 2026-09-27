@@ -4,31 +4,318 @@
 
 :root {
   color-scheme: dark;
+  --black: #090909;
+  --black-2: #0d0d0d;
+  --black-3: #121212;
+
+  --white: #f1f0ed;
+  --white-soft: #c8c6c3;
+
+  --line: #3a393b;
+  --line-soft: #242326;
+  --line-bright: #5c5960;
+
+  --purple: #a98be8;
+  --purple-soft: rgba(169, 139, 232, 0.30);
+  --purple-faint: rgba(169, 139, 232, 0.12);
+
+  --green: #9eea9a;
+  --green-soft: rgba(158, 234, 154, 0.20);
+
+  --button: #bca1ee;
+  --button-text: #161218;
 }
 
 body {
   margin: 0;
-  background-color: #0a0b0e;
-  color: #f3f4f6;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--black);
+  color: var(--white);
+  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Subtle custom scrollbar */
+/* Editorial Headline Typography */
+.editorial-headline {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: -0.045em;
+  line-height: 0.94;
+}
+
+/* Monospace Technical Typography */
+.technical-mono {
+  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  letter-spacing: 0.04em;
+}
+
+/* Custom Minimal Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a0b0e;
+  background: #090909;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #222733;
-  border-radius: 3px;
+  background: #242326;
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #ff5500;
+  background: #a98be8;
+}
+
+/* ============================================================ */
+/* 19.33s KINETIC GEOMETRIC SYSTEM ANIMATIONS */
+/* ============================================================ */
+
+/* 1. Green Signal Moving Across Pipeline (0s -> 19.33s) */
+@keyframes signalTravel {
+  0% {
+    transform: translateX(0px);
+    opacity: 0.2;
+  }
+  15% {
+    opacity: 1;
+    transform: translateX(180px);
+  }
+  30% {
+    transform: translateX(360px);
+    opacity: 1;
+  }
+  50% {
+    transform: translateX(540px);
+    opacity: 1;
+  }
+  70% {
+    transform: translateX(720px);
+    opacity: 1;
+  }
+  85% {
+    transform: translateX(900px);
+    opacity: 1;
+  }
+  95% {
+    opacity: 0.3;
+    transform: translateX(960px);
+  }
+  100% {
+    transform: translateX(0px);
+    opacity: 0.2;
+  }
+}
+
+.anim-signal-point {
+  animation: signalTravel 19.33s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* 2. Left Geometry Expansion & Drift (Phase A -> Phase B -> Loop) */
+@keyframes circleDriftLeft {
+  0% {
+    transform: translate(0px, 0px) scale(0.92);
+    opacity: 0.35;
+  }
+  25% {
+    transform: translate(25px, -15px) scale(1.08);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translate(-10px, 10px) scale(0.98);
+    opacity: 0.40;
+  }
+  75% {
+    transform: translate(15px, -5px) scale(1.02);
+    opacity: 0.50;
+  }
+  100% {
+    transform: translate(0px, 0px) scale(0.92);
+    opacity: 0.35;
+  }
+}
+
+.anim-circle-left {
+  transform-origin: 280px 280px;
+  animation: circleDriftLeft 19.33s ease-in-out infinite;
+}
+
+/* 3. Center Geometry Breathing (Phase C) */
+@keyframes circleDriftCenter {
+  0% {
+    transform: scale(0.95) rotate(0deg);
+    opacity: 0.40;
+  }
+  30% {
+    transform: scale(0.90) rotate(5deg);
+    opacity: 0.30;
+  }
+  45% {
+    transform: scale(1.12) rotate(-8deg);
+    opacity: 0.85;
+  }
+  65% {
+    transform: scale(1.04) rotate(4deg);
+    opacity: 0.60;
+  }
+  85% {
+    transform: scale(0.92) rotate(-3deg);
+    opacity: 0.35;
+  }
+  100% {
+    transform: scale(0.95) rotate(0deg);
+    opacity: 0.40;
+  }
+}
+
+.anim-circle-center {
+  transform-origin: 600px 280px;
+  animation: circleDriftCenter 19.33s ease-in-out infinite;
+}
+
+/* 4. Right Geometry Expansion (Phase D -> Phase E) */
+@keyframes circleDriftRight {
+  0% {
+    transform: translate(0px, 0px) scale(0.96);
+    opacity: 0.30;
+  }
+  30% {
+    transform: translate(-15px, 8px) scale(0.90);
+    opacity: 0.25;
+  }
+  60% {
+    transform: translate(20px, -12px) scale(1.05);
+    opacity: 0.55;
+  }
+  80% {
+    transform: translate(35px, -20px) scale(1.18);
+    opacity: 0.85;
+  }
+  95% {
+    transform: translate(10px, -5px) scale(1.02);
+    opacity: 0.45;
+  }
+  100% {
+    transform: translate(0px, 0px) scale(0.96);
+    opacity: 0.30;
+  }
+}
+
+.anim-circle-right {
+  transform-origin: 920px 280px;
+  animation: circleDriftRight 19.33s ease-in-out infinite;
+}
+
+/* 5. Triangle Drift & Rotation A */
+@keyframes triangleDriftA {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(0.90);
+    opacity: 0.30;
+  }
+  25% {
+    transform: translate(30px, -22px) rotate(14deg) scale(1.05);
+    opacity: 0.70;
+  }
+  50% {
+    transform: translate(10px, 15px) rotate(-8deg) scale(0.95);
+    opacity: 0.40;
+  }
+  75% {
+    transform: translate(-20px, -10px) rotate(6deg) scale(1.0);
+    opacity: 0.50;
+  }
+  100% {
+    transform: translate(0, 0) rotate(0deg) scale(0.90);
+    opacity: 0.30;
+  }
+}
+
+.anim-triangle-a {
+  transform-origin: 380px 240px;
+  animation: triangleDriftA 19.33s ease-in-out infinite;
+}
+
+/* 6. Triangle Drift & Rotation B (Center / Right) */
+@keyframes triangleDriftB {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(0.95);
+    opacity: 0.35;
+  }
+  35% {
+    transform: translate(-25px, 18px) rotate(-16deg) scale(1.0);
+    opacity: 0.45;
+  }
+  60% {
+    transform: translate(35px, -15px) rotate(22deg) scale(1.12);
+    opacity: 0.80;
+  }
+  85% {
+    transform: translate(15px, 8px) rotate(-5deg) scale(0.92);
+    opacity: 0.40;
+  }
+  100% {
+    transform: translate(0, 0) rotate(0deg) scale(0.95);
+    opacity: 0.35;
+  }
+}
+
+.anim-triangle-b {
+  transform-origin: 680px 290px;
+  animation: triangleDriftB 19.33s ease-in-out infinite;
+}
+
+/* 7. Triangle Drift C (Purple Accent) */
+@keyframes triangleDriftC {
+  0% {
+    transform: translate(0, 0) rotate(18deg) scale(0.92);
+    opacity: 0.40;
+  }
+  40% {
+    transform: translate(20px, -30px) rotate(-10deg) scale(1.08);
+    opacity: 0.75;
+  }
+  70% {
+    transform: translate(-15px, 20px) rotate(32deg) scale(0.98);
+    opacity: 0.50;
+  }
+  100% {
+    transform: translate(0, 0) rotate(18deg) scale(0.92);
+    opacity: 0.40;
+  }
+}
+
+.anim-triangle-c {
+  transform-origin: 820px 220px;
+  animation: triangleDriftC 19.33s ease-in-out infinite;
+}
+
+/* 8. Diagonal Construction Lines Opacity Pulse */
+@keyframes diagPulse {
+  0%, 100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.anim-diag-line {
+  animation: diagPulse 9.66s ease-in-out infinite;
+}
+
+/* Reduced Motion Override */
+@media (prefers-reduced-motion: reduce) {
+  .anim-signal-point,
+  .anim-circle-left,
+  .anim-circle-center,
+  .anim-circle-right,
+  .anim-triangle-a,
+  .anim-triangle-b,
+  .anim-triangle-c,
+  .anim-diag-line {
+    animation: none !important;
+  }
 }
