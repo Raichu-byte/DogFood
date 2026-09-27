@@ -15,6 +15,7 @@ const votingRoutes = require('./routes/votingRoutes');
 const commentRoutes = require('./routes/commentRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
 const realtimeRoutes = require('./routes/realtimeRoutes');
+const matchmakingRoutes = require('./routes/matchmakingRoutes');
 const { uploadDir } = require('./utils/upload');
 
 const app = express();
@@ -48,6 +49,7 @@ app.use('/api/voting', votingRoutes);
 app.use('/api', commentRoutes);
 app.use('/api', announcementRoutes);
 app.use('/api', realtimeRoutes);
+app.use('/api', matchmakingRoutes);
 
 // Serve frontend static files in production if dist exists
 const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');

@@ -34,12 +34,30 @@ enum AssignmentStatus {
   COMPLETED
 }
 
+enum JoinRequestType {
+  APPLICATION
+  INVITATION
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
 model User {
   id               String            @id @default(cuid())
   email            String            @unique
   passwordHash     String
   name             String
   role             Role              @default(PARTICIPANT)
+  bio              String?
+  githubUsername   String?
+  portfolioUrl     String?
+  skills           String?           // Stored as JSON array string: ["Rust", "React", ...]
+  lookingForTeam   Boolean           @default(true)
+  rolesSeeking     String?           // Stored as JSON array string: ["Frontend", "Backend"]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -51,6 +69,7 @@ model User {
   auditLogs        AuditLog[]
   comments         Comment[]
   announcements    Announcement[]
+  joinRequests     JoinRequest[]     @relation("UserJoinRequests")
 
   @@map("users")
 }
@@ -110,18 +129,24 @@ model Prize {
 }
 
 model Team {
-  id          String       @id @default(cuid())
-  eventId     String
-  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  name        String
-  inviteCode  String       @unique
-  creatorId   String
-  creator     User         @relation("CreatedTeams", fields: [creatorId], references: [id], onDelete: Cascade)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id                  String        @id @default(cuid())
+  eventId             String
+  event               Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name                String
+  inviteCode          String        @unique
+  creatorId           String
+  creator             User          @relation("CreatedTeams", fields: [creatorId], references: [id], onDelete: Cascade)
+  description         String?
+  isLookingForMembers Boolean       @default(true)
+  skillsNeeded        String?       // Stored as JSON array string: ["Solidity", "Design"]
+  openRoles           String?       // Stored as JSON array string: ["Smart Contract Dev", "UI Designer"]
+  maxMembers          Int           @default(5)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
 
-  members     TeamMember[]
-  submission  Submission?
+  members             TeamMember[]
+  submission          Submission?
+  joinRequests        JoinRequest[]
 
   @@unique([eventId, name])
   @@map("teams")
@@ -312,4 +337,23 @@ model Announcement {
   @@index([eventId])
   @@map("announcements")
 }
+
+model JoinRequest {
+  id        String          @id @default(cuid())
+  teamId    String
+  team      Team            @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User            @relation("UserJoinRequests", fields: [userId], references: [id], onDelete: Cascade)
+  type      JoinRequestType @default(APPLICATION)
+  status    RequestStatus   @default(PENDING)
+  message   String?
+  role      String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([teamId])
+  @@index([userId])
+  @@map("join_requests")
+}
+
 
