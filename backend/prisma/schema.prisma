@@ -61,16 +61,21 @@ model User {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
-  createdEvents    Event[]           @relation("CreatedEvents")
-  createdTeams     Team[]            @relation("CreatedTeams")
-  teamMemberships  TeamMember[]
-  judgeAssignments JudgeAssignment[]
-  communityVotes   CommunityVote[]
-  auditLogs        AuditLog[]
-  comments         Comment[]
-  announcements    Announcement[]
-  joinRequests     JoinRequest[]     @relation("UserJoinRequests")
-  notifications    Notification[]
+  createdEvents       Event[]           @relation("CreatedEvents")
+  createdTeams        Team[]            @relation("CreatedTeams")
+  teamMemberships     TeamMember[]
+  judgeAssignments    JudgeAssignment[]
+  communityVotes      CommunityVote[]
+  auditLogs           AuditLog[]
+  comments            Comment[]
+  announcements       Announcement[]
+  joinRequests        JoinRequest[]     @relation("UserJoinRequests")
+  notifications       Notification[]
+  reputationScore     Int               @default(0)
+  userBadges          UserBadge[]
+  sentEndorsements    Endorsement[]     @relation("SentEndorsements")
+  receivedEndorsements Endorsement[]    @relation("ReceivedEndorsements")
+  reputationLogs      ReputationLog[]
 
   @@map("users")
 }
@@ -380,5 +385,71 @@ model Notification {
   @@index([isRead])
   @@map("notifications")
 }
+
+model Badge {
+  id          String      @id @default(cuid())
+  slug        String      @unique
+  name        String
+  description String
+  icon        String      // Lucide icon name or emoji: e.g. "Award", "Zap", "Shield", "Trophy"
+  category    String      @default("ACHIEVEMENT") // "ACHIEVEMENT", "COMMUNITY", "SPECIALTY", "JUDGING"
+  tier        String      @default("BRONZE")      // "BRONZE", "SILVER", "GOLD", "PLATINUM", "SPECIAL"
+  points      Int         @default(10)
+  createdAt   DateTime    @default(now())
+
+  userBadges  UserBadge[]
+
+  @@map("badges")
+}
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId   String
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  awardedBy String?  @default("SYSTEM")
+  metadata  String?  // JSON string
+  awardedAt DateTime @default(now())
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@index([badgeId])
+  @@map("user_badges")
+}
+
+model Endorsement {
+  id         String   @id @default(cuid())
+  senderId   String
+  sender     User     @relation("SentEndorsements", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver   User     @relation("ReceivedEndorsements", fields: [receiverId], references: [id], onDelete: Cascade)
+  skill      String
+  weight     Int      @default(1)
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  @@unique([senderId, receiverId, skill])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([skill])
+  @@map("endorsements")
+}
+
+model ReputationLog {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  points      Int
+  action      String   // "PROJECT_SUBMITTED", "PODIUM_VICTORY", "COMMUNITY_VOTE", "PEER_ENDORSEMENT", "JUDGE_EVALUATION", "BADGE_EARNED"
+  sourceId    String?
+  description String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@map("reputation_logs")
+}
+
 
 

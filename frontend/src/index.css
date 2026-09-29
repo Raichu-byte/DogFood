@@ -4,345 +4,137 @@
 
 :root {
   color-scheme: dark;
-  --black: #090909;
-  --black-2: #0d0d0d;
-  --black-3: #121212;
+  --bg-deep: #070609;
+  --bg-surface: #0c0b12;
+  --bg-elevated: #13111b;
+  --bg-overlay: rgba(12, 11, 18, 0.85);
 
-  --white: #f1f0ed;
-  --white-soft: #c8c6c3;
+  --violet-glow-core: #7a4ee0;
+  --violet-glow-ambient: #351c68;
+  --violet-edge-highlight: #bfa5ff;
+  --violet-faint: rgba(122, 78, 224, 0.12);
+  --violet-border: rgba(142, 100, 245, 0.25);
 
-  --line: #3a393b;
-  --line-soft: #242326;
-  --line-bright: #5c5960;
+  --text-primary: #f5f4f8;
+  --text-secondary: #c5c3d0;
+  --text-muted: #8b8899;
+  --text-dim: #5c596b;
 
-  --purple: #a98be8;
-  --purple-soft: rgba(169, 139, 232, 0.30);
-  --purple-faint: rgba(169, 139, 232, 0.12);
+  --pill-bg: #ffffff;
+  --pill-text: #0b0a10;
+  --pill-hover: #ece9f5;
+  --signal-green: #9eea9a;
+  --signal-red: #ff6b6b;
 
-  --green: #9eea9a;
-  --green-soft: rgba(158, 234, 154, 0.20);
-
-  --button: #bca1ee;
-  --button-text: #161218;
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-highlight: rgba(191, 165, 255, 0.22);
 }
 
 body {
   margin: 0;
-  background-color: var(--black);
-  color: var(--white);
-  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  background-color: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Editorial Headline Typography */
-.editorial-headline {
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  font-weight: 400;
-  text-transform: uppercase;
-  letter-spacing: -0.045em;
-  line-height: 0.94;
+/* Atmospheric Ambient Background */
+.ambient-glow-container {
+  position: relative;
+  background-color: #070609;
+  background-image: 
+    radial-gradient(ellipse 80% 50% at 50% 70%, rgba(53, 28, 104, 0.28), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 50% 85%, rgba(122, 78, 224, 0.18), transparent 60%);
 }
 
-/* Monospace Technical Typography */
-.technical-mono {
+/* Reference Hero Display Headline */
+.hero-display-headline {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  text-transform: uppercase;
+}
+
+/* Technical Monospace Micro-labels */
+.hud-mono-label {
   font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
-  letter-spacing: 0.04em;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+/* Translucent HUD Floating Card */
+.hud-capsule {
+  background: rgba(13, 11, 20, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+  transition: border-color 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+}
+
+.hud-capsule:hover {
+  border-color: rgba(191, 165, 255, 0.35);
+  box-shadow: 0 12px 36px 0 rgba(122, 78, 224, 0.18);
+}
+
+/* Pill CTA Button */
+.pill-cta {
+  background-color: #ffffff;
+  color: #0b0a10;
+  font-weight: 600;
+  border-radius: 9999px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.15);
+}
+
+.pill-cta:hover {
+  background-color: #ece9f5;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(191, 165, 255, 0.3);
+}
+
+/* Ambient Card Surface */
+.ambient-card {
+  background-color: #0c0b12;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  transition: border-color 0.25s ease, background-color 0.25s ease, transform 0.25s ease;
+}
+
+.ambient-card:hover {
+  border-color: rgba(142, 100, 245, 0.3);
+  background-color: #100e18;
 }
 
 /* Custom Minimal Scrollbars */
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #090909;
+  background: #070609;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #242326;
-  border-radius: 2px;
+  background: #1c1a24;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a98be8;
-}
-
-/* ============================================================ */
-/* 19.33s KINETIC GEOMETRIC SYSTEM ANIMATIONS */
-/* ============================================================ */
-
-/* 1. Green Signal Moving Across Pipeline (0s -> 19.33s) */
-@keyframes signalTravel {
-  0% {
-    transform: translateX(0px);
-    opacity: 0.3;
-  }
-  20% {
-    transform: translateX(260px);
-    opacity: 1;
-  }
-  45% {
-    transform: translateX(540px);
-    opacity: 1;
-  }
-  70% {
-    transform: translateX(820px);
-    opacity: 1;
-  }
-  90% {
-    transform: translateX(1080px);
-    opacity: 1;
-  }
-  96% {
-    transform: translateX(1100px);
-    opacity: 0.2;
-  }
-  100% {
-    transform: translateX(0px);
-    opacity: 0.3;
-  }
-}
-
-@keyframes signalTravelClean {
-  0% {
-    transform: translateX(0px);
-    opacity: 0.3;
-  }
-  25% {
-    transform: translateX(300px);
-    opacity: 1;
-  }
-  50% {
-    transform: translateX(600px);
-    opacity: 1;
-  }
-  75% {
-    transform: translateX(900px);
-    opacity: 1;
-  }
-  90% {
-    transform: translateX(1200px);
-    opacity: 1;
-  }
-  96% {
-    transform: translateX(1220px);
-    opacity: 0.2;
-  }
-  100% {
-    transform: translateX(0px);
-    opacity: 0.3;
-  }
-}
-
-.anim-signal-clean {
-  animation: signalTravelClean 19.33s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-
-/* 2. Left Geometry Expansion & Drift (Phase A -> Phase B -> Loop) */
-@keyframes circleDriftLeft {
-  0% {
-    transform: translate(0px, 0px) scale(0.92);
-    opacity: 0.35;
-  }
-  25% {
-    transform: translate(25px, -15px) scale(1.08);
-    opacity: 0.75;
-  }
-  50% {
-    transform: translate(-10px, 10px) scale(0.98);
-    opacity: 0.40;
-  }
-  75% {
-    transform: translate(15px, -5px) scale(1.02);
-    opacity: 0.50;
-  }
-  100% {
-    transform: translate(0px, 0px) scale(0.92);
-    opacity: 0.35;
-  }
-}
-
-.anim-circle-left {
-  transform-origin: 280px 280px;
-  animation: circleDriftLeft 19.33s ease-in-out infinite;
-}
-
-/* 3. Center Geometry Breathing (Phase C) */
-@keyframes circleDriftCenter {
-  0% {
-    transform: scale(0.95) rotate(0deg);
-    opacity: 0.40;
-  }
-  30% {
-    transform: scale(0.90) rotate(5deg);
-    opacity: 0.30;
-  }
-  45% {
-    transform: scale(1.12) rotate(-8deg);
-    opacity: 0.85;
-  }
-  65% {
-    transform: scale(1.04) rotate(4deg);
-    opacity: 0.60;
-  }
-  85% {
-    transform: scale(0.92) rotate(-3deg);
-    opacity: 0.35;
-  }
-  100% {
-    transform: scale(0.95) rotate(0deg);
-    opacity: 0.40;
-  }
-}
-
-.anim-circle-center {
-  transform-origin: 600px 280px;
-  animation: circleDriftCenter 19.33s ease-in-out infinite;
-}
-
-/* 4. Right Geometry Expansion (Phase D -> Phase E) */
-@keyframes circleDriftRight {
-  0% {
-    transform: translate(0px, 0px) scale(0.96);
-    opacity: 0.30;
-  }
-  30% {
-    transform: translate(-15px, 8px) scale(0.90);
-    opacity: 0.25;
-  }
-  60% {
-    transform: translate(20px, -12px) scale(1.05);
-    opacity: 0.55;
-  }
-  80% {
-    transform: translate(35px, -20px) scale(1.18);
-    opacity: 0.85;
-  }
-  95% {
-    transform: translate(10px, -5px) scale(1.02);
-    opacity: 0.45;
-  }
-  100% {
-    transform: translate(0px, 0px) scale(0.96);
-    opacity: 0.30;
-  }
-}
-
-.anim-circle-right {
-  transform-origin: 920px 280px;
-  animation: circleDriftRight 19.33s ease-in-out infinite;
-}
-
-/* 5. Triangle Drift & Rotation A */
-@keyframes triangleDriftA {
-  0% {
-    transform: translate(0, 0) rotate(0deg) scale(0.90);
-    opacity: 0.30;
-  }
-  25% {
-    transform: translate(30px, -22px) rotate(14deg) scale(1.05);
-    opacity: 0.70;
-  }
-  50% {
-    transform: translate(10px, 15px) rotate(-8deg) scale(0.95);
-    opacity: 0.40;
-  }
-  75% {
-    transform: translate(-20px, -10px) rotate(6deg) scale(1.0);
-    opacity: 0.50;
-  }
-  100% {
-    transform: translate(0, 0) rotate(0deg) scale(0.90);
-    opacity: 0.30;
-  }
-}
-
-.anim-triangle-a {
-  transform-origin: 380px 240px;
-  animation: triangleDriftA 19.33s ease-in-out infinite;
-}
-
-/* 6. Triangle Drift & Rotation B (Center / Right) */
-@keyframes triangleDriftB {
-  0% {
-    transform: translate(0, 0) rotate(0deg) scale(0.95);
-    opacity: 0.35;
-  }
-  35% {
-    transform: translate(-25px, 18px) rotate(-16deg) scale(1.0);
-    opacity: 0.45;
-  }
-  60% {
-    transform: translate(35px, -15px) rotate(22deg) scale(1.12);
-    opacity: 0.80;
-  }
-  85% {
-    transform: translate(15px, 8px) rotate(-5deg) scale(0.92);
-    opacity: 0.40;
-  }
-  100% {
-    transform: translate(0, 0) rotate(0deg) scale(0.95);
-    opacity: 0.35;
-  }
-}
-
-.anim-triangle-b {
-  transform-origin: 680px 290px;
-  animation: triangleDriftB 19.33s ease-in-out infinite;
-}
-
-/* 7. Triangle Drift C (Purple Accent) */
-@keyframes triangleDriftC {
-  0% {
-    transform: translate(0, 0) rotate(18deg) scale(0.92);
-    opacity: 0.40;
-  }
-  40% {
-    transform: translate(20px, -30px) rotate(-10deg) scale(1.08);
-    opacity: 0.75;
-  }
-  70% {
-    transform: translate(-15px, 20px) rotate(32deg) scale(0.98);
-    opacity: 0.50;
-  }
-  100% {
-    transform: translate(0, 0) rotate(18deg) scale(0.92);
-    opacity: 0.40;
-  }
-}
-
-.anim-triangle-c {
-  transform-origin: 820px 220px;
-  animation: triangleDriftC 19.33s ease-in-out infinite;
-}
-
-/* 8. Diagonal Construction Lines Opacity Pulse */
-@keyframes diagPulse {
-  0%, 100% {
-    opacity: 0.25;
-  }
-  50% {
-    opacity: 0.55;
-  }
-}
-
-.anim-diag-line {
-  animation: diagPulse 9.66s ease-in-out infinite;
+  background: #7a4ee0;
 }
 
 /* Reduced Motion Override */
 @media (prefers-reduced-motion: reduce) {
-  .anim-signal-point,
-  .anim-circle-left,
-  .anim-circle-center,
-  .anim-circle-right,
-  .anim-triangle-a,
-  .anim-triangle-b,
-  .anim-triangle-c,
-  .anim-diag-line {
-    animation: none !important;
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

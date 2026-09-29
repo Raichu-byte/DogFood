@@ -32,7 +32,8 @@ import {
   CheckCheck,
   X
 } from 'lucide-react';
-import KineticHero from './components/KineticHero';
+import ReferenceHero from './components/ReferenceHero';
+import MinimalNav from './components/layout/MinimalNav';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'gallery', 'leaderboard', 'announcements', 'hackers', 'judging'
@@ -812,10 +813,10 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#090909] text-[#f1f0ed] flex flex-col font-mono selection:bg-[#a98be8]/30 selection:text-white">
+    <div className="min-h-screen bg-[#070609] text-[#f5f4f8] flex flex-col font-sans selection:bg-[#7a4ee0]/40 selection:text-white">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#0d0d0d] border border-[#a98be8]/50 text-[#f1f0ed] px-5 py-3 shadow-2xl flex items-center space-x-3 font-mono text-xs">
+        <div className="fixed bottom-6 right-6 z-50 bg-[#13111b] border border-[rgba(191,165,255,0.3)] text-[#f5f4f8] px-5 py-3 shadow-2xl rounded-2xl flex items-center space-x-3 font-sans text-xs backdrop-blur-md">
           <span className="w-2 h-2 rounded-full bg-[#9eea9a] animate-ping"></span>
           <span>{toastMessage}</span>
         </div>
@@ -825,32 +826,32 @@ export default function App() {
       {activeBanner && !bannerDismissed && (
         <div className={`w-full py-2.5 px-6 border-b z-50 transition-all ${
           activeBanner.priority === 'CRITICAL_ALERT'
-            ? 'bg-[#150a0a] border-red-500/40 text-[#f1f0ed]'
+            ? 'bg-[#180d10] border-red-500/40 text-[#f5f4f8]'
             : activeBanner.priority === 'IMPORTANT'
-            ? 'bg-[#120d1c] border-[#a98be8]/50 text-[#f1f0ed]'
-            : 'bg-[#0f0f12] border-[#242326] text-[#f1f0ed]'
+            ? 'bg-[#150f24] border-[#7a4ee0]/50 text-[#f5f4f8]'
+            : 'bg-[#0f0e16] border-[rgba(255,255,255,0.08)] text-[#f5f4f8]'
         }`}>
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 text-xs font-mono">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 text-xs font-sans">
             <div className="flex items-center space-x-3 overflow-hidden">
               <span className={`w-2 h-2 rounded-full shrink-0 ${
                 activeBanner.priority === 'CRITICAL_ALERT' ? 'bg-red-400 animate-ping' : 'bg-[#9eea9a] animate-pulse'
               }`}></span>
-              <span className={`px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase shrink-0 border ${
+              <span className={`px-2.5 py-0.5 text-[9px] font-bold tracking-wider uppercase shrink-0 rounded-full border ${
                 activeBanner.priority === 'CRITICAL_ALERT'
                   ? 'border-red-500/40 bg-red-500/10 text-red-300'
                   : activeBanner.priority === 'IMPORTANT'
-                  ? 'border-[#a98be8]/40 bg-[#a98be8]/10 text-[#a98be8]'
+                  ? 'border-[#7a4ee0]/40 bg-[#7a4ee0]/20 text-[#bfa5ff]'
                   : 'border-neutral-700 bg-neutral-800 text-neutral-300'
               }`}>
                 {activeBanner.priority}
               </span>
-              <span className="font-bold text-[#f1f0ed] shrink-0">{activeBanner.title}:</span>
-              <span className="text-[#c8c6c3] truncate">{activeBanner.content}</span>
+              <span className="font-semibold text-[#f5f4f8] shrink-0">{activeBanner.title}:</span>
+              <span className="text-[#c5c3d0] truncate">{activeBanner.content}</span>
             </div>
             <div className="flex items-center space-x-3 shrink-0">
               <button
                 onClick={() => setActiveTab('announcements')}
-                className="text-[10px] text-[#a98be8] hover:text-[#caaefc] underline uppercase tracking-wider font-bold"
+                className="text-[10px] text-[#bfa5ff] hover:text-white underline uppercase tracking-wider font-bold"
               >
                 VIEW FULL BROADCAST
               </button>
@@ -866,138 +867,73 @@ export default function App() {
         </div>
       )}
 
-      {/* Thin Editorial Navigation Header (DESIGN.md section 5) */}
-      <header className="sticky top-0 z-40 bg-[#090909]/95 backdrop-blur-sm border-b border-[#242326] px-6 py-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          {/* Left: Brand Wordmark */}
-          <div
-            className="cursor-pointer flex items-center space-x-3 group"
-            onClick={() => setActiveTab('overview')}
-          >
-            <span className="w-2 h-2 rounded-none bg-[#9eea9a]"></span>
-            <span className="font-mono text-xs tracking-widest font-bold text-[#f1f0ed] group-hover:text-[#a98be8] transition">
-              DOGFOOD 2026 // NEXERA
-            </span>
-          </div>
-
-          {/* Center: Thin Monospace Navigation Tabs */}
-          <nav className="hidden lg:flex items-center space-x-6 text-[11px] font-mono tracking-wider">
-            {navigation.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`transition-colors uppercase pb-1 border-b ${
-                  activeTab === tab.id
-                    ? 'text-[#f1f0ed] border-[#a98be8] font-bold'
-                    : 'text-[#c8c6c3] border-transparent hover:text-[#f1f0ed] hover:border-[#3a393b]'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-
-          {/* Right: Status Pill & Lavender CTA / User Action */}
-          <div className="flex items-center space-x-4">
-            <span className="hidden sm:inline-flex items-center px-2 py-0.5 text-[10px] font-mono text-[#c8c6c3] border border-[#242326]">
-              <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${health?.status === 'ok' ? 'bg-[#9eea9a]' : 'bg-rose-400'}`}></span>
-              {health?.status === 'ok' ? 'SYSTEM: ONLINE' : 'SYSTEM: OFFLINE'}
-            </span>
-
-            {/* In-App Notification Center Bell */}
-            {currentUser && (
-              <button
-                onClick={() => setShowNotificationDrawer(!showNotificationDrawer)}
-                className="relative p-2 border border-[#242326] hover:border-[#a98be8] bg-[#0d0d0d] text-[#c8c6c3] hover:text-[#f1f0ed] transition"
-                title="Open Notification Center"
-              >
-                <Bell className="w-4 h-4" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 px-1.5 py-0.2 bg-[#bca1ee] text-[#161218] text-[9px] font-bold rounded-none animate-pulse">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-            )}
-
-            {currentUser ? (
-              <div className="flex items-center space-x-3 border border-[#242326] px-3 py-1.5 bg-[#0d0d0d]">
-                <div className="text-right">
-                  <p className="text-[11px] font-bold text-[#f1f0ed] leading-none">{currentUser.name}</p>
-                  <p className="text-[9px] text-[#a98be8] font-semibold mt-0.5 uppercase tracking-wider">{currentUser.role}</p>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  title="Sign Out"
-                  className="text-neutral-500 hover:text-[#f1f0ed] transition"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setShowAuthModal(true)}
-                className="px-4 py-2 bg-[#bca1ee] hover:bg-[#caaefc] text-[#161218] font-mono text-[11px] font-bold tracking-wider transition uppercase"
-              >
-                SIGN IN ↗
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
+      {/* Minimal Editorial Navigation Header (Dogfood_Design_Reference.md) */}
+      <MinimalNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        currentUser={currentUser}
+        token={token}
+        unreadCount={unreadCount}
+        onOpenAuth={() => setShowAuthModal(true)}
+        onLogout={handleLogout}
+        onToggleNotificationDrawer={() => setShowNotificationDrawer(!showNotificationDrawer)}
+      />
 
       {/* Main Content Viewport */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8 space-y-12">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 md:p-8 space-y-12">
         {/* ============================================================ */}
-        {/* TAB 1: OVERVIEW & KINETIC GEOMETRIC ARTWORK */}
+        {/* TAB 1: OVERVIEW & REFERENCE HERO */}
         {/* ============================================================ */}
         {activeTab === 'overview' && (
           <div className="space-y-12">
-            {/* Kinetic Geometric Hero System (DESIGN.md) */}
-            <KineticHero
+            {/* Reference Hero (Dogfood_Design_Reference.md) */}
+            <ReferenceHero
               onExploreClick={() => setActiveTab('gallery')}
               onLeaderboardClick={() => setActiveTab('leaderboard')}
+              projectCount={eventData?._count?.submissions || gallery.length || 128}
+              judgingProgress={96}
+              eventStatus={eventData?.status || 'ACTIVE'}
             />
 
             {/* Architecture Metrics Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
-              <div className="bg-[#0c0c0e] border border-[#242326] p-6 space-y-1">
-                <p className="text-[10px] font-mono text-[#c8c6c3] tracking-widest uppercase">PRIZE POOL</p>
-                <p className="editorial-headline text-2xl md:text-3xl text-[#f1f0ed]">$20,000</p>
-                <p className="text-[10px] text-neutral-500">Verified USDC & Grants</p>
+              <div className="ambient-card p-5 sm:p-6 rounded-2xl space-y-1.5">
+                <p className="hud-mono-label">PRIZE POOL</p>
+                <p className="hero-display-headline text-2xl md:text-3xl text-[#f5f4f8]">$20,000</p>
+                <p className="text-[11px] text-[#8b8899]">Verified USDC & Grants</p>
               </div>
-              <div className="bg-[#0c0c0e] border border-[#242326] p-6 space-y-1">
-                <p className="text-[10px] font-mono text-[#c8c6c3] tracking-widest uppercase">SUBMISSIONS</p>
-                <p className="editorial-headline text-2xl md:text-3xl text-[#a98be8]">
-                  {eventData?._count?.submissions || 4} SHIPPED
+              <div className="ambient-card p-5 sm:p-6 rounded-2xl space-y-1.5">
+                <p className="hud-mono-label">SUBMISSIONS</p>
+                <p className="hero-display-headline text-2xl md:text-3xl text-[#bfa5ff]">
+                  {eventData?._count?.submissions || gallery.length || 4} SHIPPED
                 </p>
-                <p className="text-[10px] text-neutral-500">Freezed with SHA-256 lock</p>
+                <p className="text-[11px] text-[#8b8899]">Freezed with SHA-256 lock</p>
               </div>
-              <div className="bg-[#0c0c0e] border border-[#242326] p-6 space-y-1">
-                <p className="text-[10px] font-mono text-[#c8c6c3] tracking-widest uppercase">TEAMS</p>
-                <p className="editorial-headline text-2xl md:text-3xl text-[#f1f0ed]">
-                  {eventData?._count?.teams || 4} TEAMS
+              <div className="ambient-card p-5 sm:p-6 rounded-2xl space-y-1.5">
+                <p className="hud-mono-label">TEAMS</p>
+                <p className="hero-display-headline text-2xl md:text-3xl text-[#f5f4f8]">
+                  {eventData?._count?.teams || 4} SQUADS
                 </p>
-                <p className="text-[10px] text-neutral-500">Active hacker rosters</p>
+                <p className="text-[11px] text-[#8b8899]">Active builder rosters</p>
               </div>
-              <div className="bg-[#0c0c0e] border border-[#242326] p-6 space-y-1">
-                <p className="text-[10px] font-mono text-[#c8c6c3] tracking-widest uppercase">CALIBRATION</p>
-                <p className="editorial-headline text-2xl md:text-3xl text-[#9eea9a]">Z-SCORE</p>
-                <p className="text-[10px] text-neutral-500">Bias variance mitigated</p>
+              <div className="ambient-card p-5 sm:p-6 rounded-2xl space-y-1.5">
+                <p className="hud-mono-label">CALIBRATION</p>
+                <p className="hero-display-headline text-2xl md:text-3xl text-[#9eea9a]">Z-SCORE</p>
+                <p className="text-[11px] text-[#8b8899]">Zero-bias normalized</p>
               </div>
             </div>
 
             {/* Championship Prizes */}
             <div className="space-y-6">
-              <div className="flex justify-between items-center border-b border-[#242326] pb-3">
-                <h2 className="text-lg font-bold text-[#f1f0ed] tracking-wider uppercase flex items-center space-x-2">
-                  <Award className="w-4 h-4 text-[#a98be8]" />
-                  <span>CHAMPIONSHIP PRIZES</span>
+              <div className="flex justify-between items-center border-b border-[rgba(255,255,255,0.06)] pb-4">
+                <h2 className="text-base sm:text-lg font-bold text-[#f5f4f8] tracking-tight uppercase flex items-center space-x-2">
+                  <Award className="w-4 h-4 text-[#bfa5ff]" />
+                  <span>CHAMPIONSHIP REWARDS</span>
                 </h2>
-                <span className="text-[11px] font-mono text-neutral-500">VERIFIED ESCROW REWARDS</span>
+                <span className="text-[11px] font-mono text-[#8b8899]">VERIFIED SMART ESCROW</span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 {(eventData?.prizes || [
                   { id: 'p1', title: 'Grand Championship', amount: '$15,000', description: 'Highest overall calibrated score across all rubric dimensions.' },
                   { id: 'p2', title: 'Best AI Architecture', amount: '$5,000', description: 'Outstanding edge intelligence and local inference engine.' },
@@ -1005,16 +941,16 @@ export default function App() {
                 ]).map((prize, idx) => (
                   <div
                     key={prize.id || idx}
-                    className="bg-[#0c0c0e] border border-[#242326] hover:border-[#3a393b] p-6 space-y-3 transition group"
+                    className="ambient-card p-6 rounded-2xl space-y-3"
                   >
-                    <div className="text-[10px] font-mono text-[#a98be8] tracking-widest uppercase">
-                      PRIZE CATEGORY 0{idx + 1}
+                    <div className="hud-mono-label text-[#bfa5ff]">
+                      TIER 0{idx + 1} // PRIZE
                     </div>
-                    <div className="editorial-headline text-3xl text-[#f1f0ed] font-normal">
+                    <div className="hero-display-headline text-3xl sm:text-4xl text-[#f5f4f8]">
                       {prize.amount}
                     </div>
-                    <h3 className="text-sm font-bold text-[#f1f0ed]">{prize.title}</h3>
-                    <p className="text-xs text-[#c8c6c3] leading-relaxed">{prize.description}</p>
+                    <h3 className="text-sm font-bold text-[#f5f4f8]">{prize.title}</h3>
+                    <p className="text-xs text-[#c5c3d0] leading-relaxed font-sans">{prize.description}</p>
                   </div>
                 ))}
               </div>
@@ -1066,24 +1002,24 @@ export default function App() {
 
             {/* Gallery Cards Grid */}
             {loading ? (
-              <div className="text-center py-20 text-neutral-500 font-mono text-xs">
-                <RefreshCw className="w-6 h-6 animate-spin mx-auto text-[#a98be8] mb-3" />
-                LOADING PROJECT SUBMISSIONS...
+              <div className="text-center py-24 text-[#8b8899] font-mono text-xs">
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto text-[#bfa5ff] mb-3" />
+                SYNCING SUBMISSIONS...
               </div>
             ) : gallery.length === 0 ? (
-              <div className="text-center py-20 border border-[#242326] bg-[#0c0c0e]">
-                <p className="text-neutral-500 text-xs">No matching projects found.</p>
+              <div className="text-center py-20 ambient-card rounded-3xl">
+                <p className="text-[#8b8899] text-xs">No matching projects found.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {gallery.map((project) => (
                   <div
                     key={project.id}
-                    className="bg-[#0c0c0e] border border-[#242326] hover:border-[#3a393b] p-6 flex flex-col justify-between space-y-4 transition"
+                    className="ambient-card p-6 sm:p-7 rounded-3xl flex flex-col justify-between space-y-5 group"
                   >
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <span className="px-2 py-0.5 text-[9px] font-mono text-[#a98be8] border border-[#a98be8]/30 bg-[#a98be8]/10 uppercase tracking-wider">
+                        <span className="px-3 py-1 text-[9px] font-mono font-semibold text-[#bfa5ff] border border-[rgba(191,165,255,0.25)] bg-[#13111b] rounded-full uppercase tracking-wider">
                           {project.track?.name || 'GENERAL TRACK'}
                         </span>
                         <div className="flex items-center space-x-2">
@@ -1092,7 +1028,7 @@ export default function App() {
                               href={project.repoUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="p-1.5 border border-[#242326] hover:border-[#a98be8] text-neutral-400 hover:text-white transition"
+                              className="p-2 rounded-full border border-[rgba(255,255,255,0.08)] hover:border-[rgba(191,165,255,0.4)] bg-[#13111b] text-[#8b8899] hover:text-white transition"
                               title="GitHub Source"
                             >
                               <Github className="w-3.5 h-3.5" />
@@ -1103,7 +1039,7 @@ export default function App() {
                               href={project.demoUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="p-1.5 border border-[#242326] hover:border-[#a98be8] text-neutral-400 hover:text-white transition"
+                              className="p-2 rounded-full border border-[rgba(255,255,255,0.08)] hover:border-[rgba(191,165,255,0.4)] bg-[#13111b] text-[#8b8899] hover:text-white transition"
                               title="Live Demo"
                             >
                               <ExternalLink className="w-3.5 h-3.5" />
@@ -1113,8 +1049,8 @@ export default function App() {
                       </div>
 
                       <div>
-                        <h3 className="text-lg font-bold text-[#f1f0ed]">{project.title}</h3>
-                        <p className="text-xs text-[#c8c6c3] mt-1 leading-relaxed">{project.tagline}</p>
+                        <h3 className="text-lg font-bold text-[#f5f4f8] group-hover:text-[#bfa5ff] transition-colors">{project.title}</h3>
+                        <p className="text-xs text-[#c5c3d0] mt-1 leading-relaxed">{project.tagline}</p>
                       </div>
 
                       {/* Tech stack pills */}
@@ -1122,31 +1058,31 @@ export default function App() {
                         {(project.techStack || []).map((tech, idx) => (
                           <span
                             key={idx}
-                            className="px-2 py-0.5 text-[9px] font-mono text-neutral-400 border border-[#1f1e21] bg-[#090909]"
+                            className="px-2.5 py-0.5 text-[9px] font-mono text-[#8b8899] border border-[rgba(255,255,255,0.05)] bg-[#13111b] rounded-full"
                           >
                             {tech}
                           </span>
                         ))}
                       </div>
 
-                      <div className="pt-2 border-t border-[#1a191d] flex items-center justify-between text-xs text-neutral-500">
-                        <span className="font-semibold text-neutral-400">Team: {project.team?.name}</span>
+                      <div className="pt-3 border-t border-[rgba(255,255,255,0.06)] flex items-center justify-between text-xs text-[#8b8899]">
+                        <span className="font-semibold text-[#c5c3d0]">Team: {project.team?.name}</span>
                         <span>{project.team?.members?.length || 1} Member(s)</span>
                       </div>
                     </div>
 
                     {/* Actions */}
-                    <div className="pt-4 border-t border-[#1a191d] grid grid-cols-2 gap-3">
+                    <div className="pt-4 border-t border-[rgba(255,255,255,0.06)] grid grid-cols-2 gap-3">
                       <button
                         onClick={() => openProjectComments(project)}
-                        className="py-2.5 bg-[#121118] hover:bg-[#1c1a26] text-[#c8c6c3] hover:text-[#f1f0ed] border border-[#242326] text-xs font-mono tracking-wider transition uppercase flex items-center justify-center space-x-1.5"
+                        className="py-2.5 px-4 bg-[#13111b] hover:bg-[#1a1726] text-[#c5c3d0] hover:text-white border border-[rgba(255,255,255,0.08)] hover:border-[rgba(191,165,255,0.3)] rounded-full text-xs font-semibold tracking-wider transition uppercase flex items-center justify-center space-x-1.5"
                       >
-                        <MessageSquare className="w-3.5 h-3.5 text-[#a98be8]" />
+                        <MessageSquare className="w-3.5 h-3.5 text-[#bfa5ff]" />
                         <span>DISCUSS</span>
                       </button>
                       <button
                         onClick={() => handleCommunityVote(project.id)}
-                        className="py-2.5 bg-[#bca1ee] hover:bg-[#caaefc] text-[#161218] font-mono text-xs font-bold tracking-wider transition uppercase flex items-center justify-center space-x-1.5"
+                        className="pill-cta py-2.5 px-4 text-xs font-bold tracking-wider uppercase flex items-center justify-center space-x-1.5"
                       >
                         <Vote className="w-3.5 h-3.5" />
                         <span>VOTE</span>
@@ -1164,45 +1100,45 @@ export default function App() {
         {/* ============================================================ */}
         {activeTab === 'leaderboard' && (
           <div className="space-y-8">
-            <div className="border-b border-[#242326] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="border-b border-[rgba(255,255,255,0.06)] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold tracking-wider text-[#f1f0ed] uppercase flex items-center space-x-2">
-                  <Trophy className="w-5 h-5 text-[#a98be8]" />
+                <h2 className="text-xl font-bold tracking-tight text-[#f5f4f8] uppercase flex items-center space-x-2">
+                  <Trophy className="w-5 h-5 text-[#bfa5ff]" />
                   <span>TOURNAMENT STANDINGS</span>
                 </h2>
-                <p className="text-xs text-[#c8c6c3] mt-1">
+                <p className="text-xs text-[#c5c3d0] mt-1">
                   Dynamic rankings calibrated across statistical Z-Score, raw arithmetic means, and popular ballots.
                 </p>
               </div>
 
               {/* Mode Tabs */}
-              <div className="flex items-center space-x-1 border border-[#242326] p-1 bg-[#0c0c0e]">
+              <div className="flex items-center space-x-1 bg-[#0c0b12] border border-[rgba(255,255,255,0.08)] p-1 rounded-full text-xs">
                 <button
                   onClick={() => setLeaderboardMode('normalized')}
-                  className={`px-3 py-1.5 text-xs font-mono tracking-wider transition uppercase ${
+                  className={`px-3.5 py-1.5 rounded-full font-semibold transition uppercase ${
                     leaderboardMode === 'normalized'
-                      ? 'bg-[#bca1ee] text-[#161218] font-bold'
-                      : 'text-[#c8c6c3] hover:text-[#f1f0ed]'
+                      ? 'bg-[#1e1a2c] text-[#f5f4f8] border border-[rgba(191,165,255,0.3)]'
+                      : 'text-[#8b8899] hover:text-[#c5c3d0]'
                   }`}
                 >
                   ⚡ Z-SCORE
                 </button>
                 <button
                   onClick={() => setLeaderboardMode('raw')}
-                  className={`px-3 py-1.5 text-xs font-mono tracking-wider transition uppercase ${
+                  className={`px-3.5 py-1.5 rounded-full font-semibold transition uppercase ${
                     leaderboardMode === 'raw'
-                      ? 'bg-[#bca1ee] text-[#161218] font-bold'
-                      : 'text-[#c8c6c3] hover:text-[#f1f0ed]'
+                      ? 'bg-[#1e1a2c] text-[#f5f4f8] border border-[rgba(191,165,255,0.3)]'
+                      : 'text-[#8b8899] hover:text-[#c5c3d0]'
                   }`}
                 >
                   📊 RAW AVERAGE
                 </button>
                 <button
                   onClick={() => setLeaderboardMode('community')}
-                  className={`px-3 py-1.5 text-xs font-mono tracking-wider transition uppercase ${
+                  className={`px-3.5 py-1.5 rounded-full font-semibold transition uppercase ${
                     leaderboardMode === 'community'
-                      ? 'bg-[#bca1ee] text-[#161218] font-bold'
-                      : 'text-[#c8c6c3] hover:text-[#f1f0ed]'
+                      ? 'bg-[#1e1a2c] text-[#f5f4f8] border border-[rgba(191,165,255,0.3)]'
+                      : 'text-[#8b8899] hover:text-[#c5c3d0]'
                   }`}
                 >
                   🗳️ COMMUNITY
@@ -1211,11 +1147,11 @@ export default function App() {
             </div>
 
             {/* Leaderboard Table */}
-            <div className="border border-[#242326] bg-[#0c0c0e] overflow-hidden">
+            <div className="ambient-card rounded-3xl overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse font-sans">
                   <thead>
-                    <tr className="border-b border-[#242326] bg-[#090909] text-[10px] font-mono text-[#c8c6c3] uppercase tracking-wider">
+                    <tr className="border-b border-[rgba(255,255,255,0.06)] bg-[#0c0b12] text-[10px] font-mono text-[#8b8899] uppercase tracking-wider">
                       <th className="py-4 px-6">Rank</th>
                       <th className="py-4 px-6">Project / Team</th>
                       <th className="py-4 px-6">Track</th>
@@ -1225,40 +1161,40 @@ export default function App() {
                       <th className="py-4 px-6 text-right">Evals</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#1a191d]">
+                  <tbody className="divide-y divide-[rgba(255,255,255,0.04)]">
                     {leaderboard.map((entry) => (
-                      <tr key={entry.id} className="hover:bg-[#121118] transition">
+                      <tr key={entry.id} className="hover:bg-[#13111b] transition">
                         <td className="py-4 px-6 font-mono text-sm font-bold">
-                          <span className={`px-2 py-0.5 text-xs ${
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs ${
                             entry.rank === 1
-                              ? 'bg-[#a98be8]/20 text-[#a98be8] border border-[#a98be8]/40'
-                              : 'text-neutral-400'
+                              ? 'bg-[#7a4ee0]/20 text-[#bfa5ff] border border-[rgba(191,165,255,0.4)]'
+                              : 'text-[#8b8899]'
                           }`}>
                             #{entry.rank}
                           </span>
                         </td>
                         <td className="py-4 px-6">
-                          <p className="font-bold text-sm text-[#f1f0ed]">{entry.title}</p>
-                          <p className="text-[11px] text-neutral-500 font-mono">Team: {entry.team?.name}</p>
+                          <p className="font-bold text-sm text-[#f5f4f8]">{entry.title}</p>
+                          <p className="text-[11px] text-[#8b8899]">Team: {entry.team?.name}</p>
                         </td>
                         <td className="py-4 px-6">
-                          <span className="text-[10px] text-neutral-400 border border-[#242326] px-2 py-0.5">
+                          <span className="text-[10px] text-[#8b8899] border border-[rgba(255,255,255,0.08)] bg-[#13111b] px-2.5 py-0.5 rounded-full font-mono">
                             {entry.track?.name || 'GENERAL'}
                           </span>
                         </td>
                         <td className="py-4 px-6 text-right font-mono text-sm font-bold">
                           {leaderboardMode === 'normalized' ? (
-                            <span className="text-[#a98be8]">
+                            <span className="text-[#bfa5ff]">
                               {entry.scores.normalizedZScore > 0 ? '+' : ''}
                               {entry.scores.normalizedZScore.toFixed(2)}
                             </span>
                           ) : leaderboardMode === 'raw' ? (
-                            <span className="text-[#f1f0ed]">{entry.scores.rawScoreMean.toFixed(2)}</span>
+                            <span className="text-[#f5f4f8]">{entry.scores.rawScoreMean.toFixed(2)}</span>
                           ) : (
                             <span className="text-[#9eea9a]">{entry.scores.communityVotesCount} votes</span>
                           )}
                         </td>
-                        <td className="py-4 px-6 text-right text-xs text-neutral-500">
+                        <td className="py-4 px-6 text-right text-xs text-[#8b8899]">
                           {entry.scores.evaluationsCount || 3}
                         </td>
                       </tr>
@@ -1275,25 +1211,25 @@ export default function App() {
         {/* ============================================================ */}
         {activeTab === 'activity' && (
           <div className="space-y-8">
-            <div className="border-b border-[#242326] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="border-b border-[rgba(255,255,255,0.06)] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold tracking-wider text-[#f1f0ed] uppercase flex items-center space-x-2">
-                  <Activity className="w-5 h-5 text-[#a98be8]" />
+                <h2 className="text-xl font-bold tracking-tight text-[#f5f4f8] uppercase flex items-center space-x-2">
+                  <Activity className="w-5 h-5 text-[#bfa5ff]" />
                   <span>ACTIVITY TIMELINE // LIVE AUDIT STREAM</span>
                 </h2>
-                <p className="text-xs text-[#c8c6c3] mt-1">
+                <p className="text-xs text-[#c5c3d0] mt-1">
                   Real-time immutable ledger of platform events, squad formations, shipments, and evaluations.
                 </p>
               </div>
 
               <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-1.5 px-3 py-1.5 border border-[#242326] bg-[#0d0d0d] text-[10px] text-[#9eea9a]">
+                <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#0c0b12] text-[10px] font-mono text-[#9eea9a]">
                   <Radio className="w-3.5 h-3.5 animate-pulse" />
                   <span>LIVE SSE BEACON</span>
                 </div>
                 <button
                   onClick={fetchActivities}
-                  className="p-1.5 border border-[#242326] hover:border-[#a98be8] text-neutral-400 hover:text-white transition"
+                  className="p-2 rounded-full border border-[rgba(255,255,255,0.08)] hover:border-[rgba(191,165,255,0.3)] bg-[#0c0b12] text-[#8b8899] hover:text-white transition"
                   title="Refresh activity feed"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
@@ -1307,10 +1243,10 @@ export default function App() {
                 <button
                   key={filterKey}
                   onClick={() => setActivityFilter(filterKey)}
-                  className={`px-3 py-1 text-[10px] font-mono tracking-wider transition uppercase ${
+                  className={`px-3.5 py-1.5 rounded-full text-[10px] font-mono tracking-wider transition uppercase ${
                     activityFilter === filterKey
-                      ? 'bg-[#bca1ee] text-[#161218] font-bold'
-                      : 'border border-[#242326] text-[#c8c6c3] hover:text-[#f1f0ed] bg-[#0c0c0e]'
+                      ? 'bg-[#1e1a2c] text-[#f5f4f8] border border-[rgba(191,165,255,0.3)] font-bold'
+                      : 'border border-[rgba(255,255,255,0.06)] text-[#8b8899] hover:text-[#f5f4f8] bg-[#0c0b12]'
                   }`}
                 >
                   {filterKey.replace(/_/g, ' ')}
@@ -1325,35 +1261,35 @@ export default function App() {
                 .map((act) => (
                   <div
                     key={act.id}
-                    className="p-4 border border-[#242326] bg-[#0c0c0e] hover:border-[#3a393b] transition flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
+                    className="ambient-card p-4 sm:p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
                   >
                     <div className="flex items-start md:items-center space-x-3">
                       <span className="w-2 h-2 rounded-full bg-[#9eea9a] mt-1.5 md:mt-0 flex-shrink-0"></span>
                       <div>
                         <div className="flex items-center space-x-2">
-                          <span className="font-bold text-[#f1f0ed]">{act.actor?.name || 'System'}</span>
-                          <span className="text-[9px] px-1.5 py-0.2 font-mono uppercase bg-[#1f1e24] text-[#a98be8] border border-[#2d2b33]">
+                          <span className="font-bold text-[#f5f4f8]">{act.actor?.name || 'System'}</span>
+                          <span className="text-[9px] px-2 py-0.5 font-mono uppercase bg-[#1e1a2c] text-[#bfa5ff] rounded-full border border-[rgba(191,165,255,0.2)]">
                             {act.actor?.role || 'SYSTEM'}
                           </span>
                           <span className="text-neutral-500 font-mono text-[11px]">—</span>
-                          <span className="font-mono text-[#a98be8] font-semibold">{act.action}</span>
+                          <span className="font-mono text-[#bfa5ff] font-semibold">{act.action}</span>
                         </div>
                         {act.metadata && Object.keys(act.metadata).length > 0 && (
-                          <p className="text-[11px] text-neutral-400 mt-1 font-mono">
+                          <p className="text-[11px] text-[#8b8899] mt-1 font-mono">
                             {JSON.stringify(act.metadata)}
                           </p>
                         )}
                       </div>
                     </div>
 
-                    <div className="text-[10px] font-mono text-neutral-500 flex-shrink-0">
+                    <div className="text-[10px] font-mono text-[#8b8899] flex-shrink-0">
                       {new Date(act.timestamp).toLocaleTimeString()} · {new Date(act.timestamp).toLocaleDateString()}
                     </div>
                   </div>
                 ))}
 
               {activities.filter(act => activityFilter === 'ALL' || act.action === activityFilter).length === 0 && (
-                <div className="p-12 border border-dashed border-[#242326] text-center text-xs text-neutral-500">
+                <div className="p-12 ambient-card rounded-3xl text-center text-xs text-[#8b8899]">
                   Zero matching audit events recorded yet.
                 </div>
               )}
@@ -1366,29 +1302,29 @@ export default function App() {
         {/* ============================================================ */}
         {activeTab === 'announcements' && (
           <div className="space-y-8">
-            <div className="border-b border-[#242326] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="border-b border-[rgba(255,255,255,0.06)] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold tracking-wider text-[#f1f0ed] uppercase flex items-center space-x-2">
-                  <Radio className="w-5 h-5 text-[#a98be8]" />
+                <h2 className="text-xl font-bold tracking-tight text-[#f5f4f8] uppercase flex items-center space-x-2">
+                  <Radio className="w-5 h-5 text-[#bfa5ff]" />
                   <span>ORGANIZER BROADCAST SYSTEM & ALERTS</span>
                 </h2>
-                <p className="text-xs text-[#c8c6c3] mt-1">
+                <p className="text-xs text-[#c5c3d0] mt-1">
                   Targeted broadcasts, multi-channel alert dispatches, and active critical banner takeovers.
                 </p>
               </div>
 
               {/* Priority Filter */}
               <div className="flex items-center space-x-2">
-                <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-mono">PRIORITY:</span>
-                <div className="flex bg-[#0d0d0d] border border-[#242326] p-0.5">
+                <span className="hud-mono-label">PRIORITY:</span>
+                <div className="flex bg-[#0c0b12] border border-[rgba(255,255,255,0.08)] p-1 rounded-full text-xs">
                   {['ALL', 'CRITICAL_ALERT', 'IMPORTANT', 'INFO'].map(p => (
                     <button
                       key={p}
                       onClick={() => setBroadcastFilterPriority(p)}
-                      className={`px-3 py-1 text-[10px] font-mono tracking-wider uppercase transition ${
+                      className={`px-3 py-1 rounded-full text-[10px] font-mono tracking-wider uppercase transition ${
                         broadcastFilterPriority === p
-                          ? 'bg-[#242326] text-[#f1f0ed] font-bold'
-                          : 'text-neutral-500 hover:text-[#c8c6c3]'
+                          ? 'bg-[#1e1a2c] text-[#f5f4f8] font-bold border border-[rgba(191,165,255,0.3)]'
+                          : 'text-[#8b8899] hover:text-[#c5c3d0]'
                       }`}
                     >
                       {p.replace('_', ' ')}
@@ -1400,13 +1336,13 @@ export default function App() {
 
             {/* Organizer composer */}
             {(currentUser?.role === 'ORGANIZER' || currentUser?.role === 'ADMIN') && (
-              <div className="border border-[#a98be8]/40 bg-[#0d0c12] p-6 space-y-4">
+              <div className="ambient-card p-6 sm:p-7 rounded-3xl space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-mono font-bold text-[#a98be8] uppercase tracking-wider flex items-center space-x-2">
+                  <p className="text-xs font-mono font-bold text-[#bfa5ff] uppercase tracking-wider flex items-center space-x-2">
                     <Megaphone className="w-4 h-4" />
                     <span>DISPATCH NEW BROADCAST</span>
                   </p>
-                  <span className="text-[10px] font-mono text-neutral-500 uppercase">
+                  <span className="text-[10px] font-mono text-[#8b8899] uppercase">
                     ORGANIZER / ADMIN CONSOLE
                   </span>
                 </div>
@@ -1417,13 +1353,13 @@ export default function App() {
                       placeholder="Broadcast headline..."
                       value={announcementTitle}
                       onChange={(e) => setAnnouncementTitle(e.target.value)}
-                      className="md:col-span-1 bg-[#090909] border border-[#242326] px-4 py-2.5 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8]"
+                      className="md:col-span-1 bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
                     />
                     <div>
                       <select
                         value={announcementPriority}
                         onChange={(e) => setAnnouncementPriority(e.target.value)}
-                        className="w-full bg-[#090909] border border-[#242326] px-4 py-2.5 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8]"
+                        className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
                       >
                         <option value="INFO">PRIORITY: INFO</option>
                         <option value="IMPORTANT">PRIORITY: IMPORTANT</option>
@@ -1434,7 +1370,7 @@ export default function App() {
                       <select
                         value={announcementAudience}
                         onChange={(e) => setAnnouncementAudience(e.target.value)}
-                        className="w-full bg-[#090909] border border-[#242326] px-4 py-2.5 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8]"
+                        className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
                       >
                         <option value="ALL">AUDIENCE: ALL ATTENDEES</option>
                         <option value="PARTICIPANTS_ONLY">AUDIENCE: PARTICIPANTS ONLY</option>
@@ -1448,32 +1384,32 @@ export default function App() {
                     placeholder="Broadcast message content and instructions..."
                     value={announcementContent}
                     onChange={(e) => setAnnouncementContent(e.target.value)}
-                    className="w-full bg-[#090909] border border-[#242326] px-4 py-2.5 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8]"
+                    className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
                   />
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-[#1a191d]">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-[rgba(255,255,255,0.06)]">
                     <div className="flex items-center space-x-6">
-                      <label className="flex items-center space-x-2 text-xs text-[#c8c6c3] cursor-pointer">
+                      <label className="flex items-center space-x-2 text-xs text-[#c5c3d0] cursor-pointer">
                         <input
                           type="checkbox"
                           checked={announcementPinned}
                           onChange={(e) => setAnnouncementPinned(e.target.checked)}
-                          className="accent-[#a98be8]"
+                          className="accent-[#7a4ee0]"
                         />
                         <span>Pin to Top</span>
                       </label>
-                      <label className="flex items-center space-x-2 text-xs text-[#c8c6c3] cursor-pointer">
+                      <label className="flex items-center space-x-2 text-xs text-[#c5c3d0] cursor-pointer">
                         <input
                           type="checkbox"
                           checked={announcementIsBanner}
                           onChange={(e) => setAnnouncementIsBanner(e.target.checked)}
-                          className="accent-[#a98be8]"
+                          className="accent-[#7a4ee0]"
                         />
-                        <span className="text-[#a98be8] font-bold">⚡ Activate Top Banner Takeover</span>
+                        <span className="text-[#bfa5ff] font-semibold">⚡ Activate Top Banner Takeover</span>
                       </label>
                     </div>
                     <button
                       type="submit"
-                      className="px-6 py-2.5 bg-[#bca1ee] hover:bg-[#caaefc] text-[#161218] font-bold text-xs tracking-wider uppercase flex items-center justify-center space-x-1.5 shrink-0"
+                      className="pill-cta px-6 py-2.5 text-xs font-bold tracking-wider uppercase flex items-center justify-center space-x-1.5 shrink-0"
                     >
                       <Send className="w-3.5 h-3.5" />
                       <span>DISPATCH BROADCAST</span>
@@ -1490,35 +1426,35 @@ export default function App() {
                 .map((a) => (
                   <div
                     key={a.id}
-                    className={`p-6 border transition-all ${
+                    className={`ambient-card p-6 rounded-3xl space-y-4 transition-all ${
                       a.priority === 'CRITICAL_ALERT'
                         ? 'border-red-500/50 bg-[#140b0d]'
                         : a.isPinned
-                        ? 'border-[#a98be8]/50 bg-[#100f16]'
-                        : 'border-[#242326] bg-[#0c0c0e]'
-                    } space-y-4`}
+                        ? 'border-[rgba(191,165,255,0.3)] bg-[#100e18]'
+                        : ''
+                    }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-2">
                         {/* Priority Badge */}
-                        <span className={`px-2 py-0.5 text-[9px] font-mono font-bold uppercase border ${
+                        <span className={`px-2.5 py-0.5 text-[9px] font-mono font-bold uppercase rounded-full border ${
                           a.priority === 'CRITICAL_ALERT'
                             ? 'border-red-500/50 bg-red-500/10 text-red-400'
                             : a.priority === 'IMPORTANT'
-                            ? 'border-[#a98be8]/50 bg-[#a98be8]/10 text-[#a98be8]'
-                            : 'border-neutral-700 bg-neutral-800 text-neutral-400'
+                            ? 'border-[#7a4ee0]/50 bg-[#7a4ee0]/20 text-[#bfa5ff]'
+                            : 'border-[rgba(255,255,255,0.08)] bg-[#13111b] text-[#8b8899]'
                         }`}>
                           {a.priority || 'INFO'}
                         </span>
 
                         {/* Audience Badge */}
-                        <span className="px-2 py-0.5 text-[9px] font-mono border border-neutral-700 bg-neutral-900/50 text-neutral-400 uppercase">
+                        <span className="px-2.5 py-0.5 text-[9px] font-mono border border-[rgba(255,255,255,0.08)] bg-[#13111b] text-[#8b8899] rounded-full uppercase">
                           TARGET: {a.targetAudience?.replace('_', ' ') || 'ALL'}
                         </span>
 
                         {/* Pinned Badge */}
                         {a.isPinned && (
-                          <span className="px-2 py-0.5 text-[9px] font-mono font-bold bg-[#a98be8]/10 text-[#a98be8] border border-[#a98be8]/30 uppercase flex items-center space-x-1">
+                          <span className="px-2.5 py-0.5 text-[9px] font-mono font-bold bg-[#7a4ee0]/20 text-[#bfa5ff] border border-[rgba(191,165,255,0.3)] rounded-full uppercase flex items-center space-x-1">
                             <Pin className="w-2.5 h-2.5" />
                             <span>PINNED</span>
                           </span>
@@ -1526,32 +1462,32 @@ export default function App() {
 
                         {/* Banner Active Badge */}
                         {a.isBannerActive && (
-                          <span className="px-2 py-0.5 text-[9px] font-mono font-bold bg-[#9eea9a]/10 text-[#9eea9a] border border-[#9eea9a]/30 uppercase flex items-center space-x-1">
+                          <span className="px-2.5 py-0.5 text-[9px] font-mono font-bold bg-[#9eea9a]/10 text-[#9eea9a] border border-[#9eea9a]/30 rounded-full uppercase flex items-center space-x-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-[#9eea9a] animate-pulse"></span>
                             <span>BANNER TAKEOVER ACTIVE</span>
                           </span>
                         )}
 
-                        <h3 className="text-base font-bold text-[#f1f0ed] ml-1">{a.title}</h3>
+                        <h3 className="text-base font-bold text-[#f5f4f8] ml-1">{a.title}</h3>
                       </div>
-                      <span className="text-[10px] text-neutral-500 shrink-0 font-mono">
+                      <span className="text-[10px] text-[#8b8899] shrink-0 font-mono">
                         {new Date(a.createdAt).toLocaleDateString()} · {new Date(a.createdAt).toLocaleTimeString()}
                       </span>
                     </div>
 
-                    <p className="text-xs text-[#c8c6c3] leading-relaxed whitespace-pre-wrap">{a.content}</p>
+                    <p className="text-xs text-[#c5c3d0] leading-relaxed whitespace-pre-wrap font-sans">{a.content}</p>
 
-                    <div className="pt-3 border-t border-[#1a191d] flex items-center justify-between text-[10px] text-neutral-500 font-mono">
+                    <div className="pt-3 border-t border-[rgba(255,255,255,0.06)] flex items-center justify-between text-[10px] text-[#8b8899] font-mono">
                       <span>Posted by {a.author?.name || 'Tournament Director'} ({a.author?.role || 'ORGANIZER'})</span>
 
                       {/* Organizer Banner Toggle Control */}
                       {(currentUser?.role === 'ORGANIZER' || currentUser?.role === 'ADMIN') && (
                         <button
                           onClick={() => handleToggleBanner(a.id)}
-                          className={`px-3 py-1 text-[10px] uppercase font-bold tracking-wider border transition ${
+                          className={`px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider border transition ${
                             a.isBannerActive
                               ? 'border-red-500/40 text-red-400 hover:bg-red-500/10'
-                              : 'border-[#a98be8]/40 text-[#a98be8] hover:bg-[#a98be8]/10'
+                              : 'border-[#7a4ee0]/40 text-[#bfa5ff] hover:bg-[#7a4ee0]/10'
                           }`}
                         >
                           {a.isBannerActive ? '✕ Deactivate Banner Takeover' : '⚡ Activate Banner Takeover'}
@@ -1562,7 +1498,7 @@ export default function App() {
                 ))}
 
               {announcements.filter(a => broadcastFilterPriority === 'ALL' || a.priority === broadcastFilterPriority).length === 0 && (
-                <div className="p-12 border border-dashed border-[#242326] text-center text-xs text-neutral-500">
+                <div className="p-12 ambient-card rounded-3xl text-center text-xs text-[#8b8899]">
                   No broadcasts found for priority {broadcastFilterPriority}.
                 </div>
               )}
@@ -1575,25 +1511,25 @@ export default function App() {
         {/* ============================================================ */}
         {activeTab === 'hackers' && (
           <div className="space-y-8">
-            <div className="border-b border-[#242326] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="border-b border-[rgba(255,255,255,0.06)] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold tracking-wider text-[#f1f0ed] uppercase flex items-center space-x-2">
-                  <Users className="w-5 h-5 text-[#a98be8]" />
+                <h2 className="text-xl font-bold tracking-tight text-[#f5f4f8] uppercase flex items-center space-x-2">
+                  <Users className="w-5 h-5 text-[#bfa5ff]" />
                   <span>HACKER DIRECTORY & MATCHMAKING</span>
                 </h2>
-                <p className="text-xs text-[#c8c6c3] mt-1">
+                <p className="text-xs text-[#c5c3d0] mt-1">
                   Discover builders looking for teams and connect with recruiting squads.
                 </p>
               </div>
 
-              <div className="flex items-center bg-[#0d0d0d] border border-[#242326] px-3 py-2 text-xs">
-                <Search className="w-3.5 h-3.5 text-neutral-500 mr-2" />
+              <div className="flex items-center bg-[#0c0b12] border border-[rgba(255,255,255,0.08)] rounded-full px-3.5 py-2 text-xs">
+                <Search className="w-3.5 h-3.5 text-[#8b8899] mr-2" />
                 <input
                   type="text"
                   placeholder="Filter by skill (e.g. Rust, React)..."
                   value={hackerSkillFilter}
                   onChange={(e) => setHackerSkillFilter(e.target.value)}
-                  className="bg-transparent text-xs text-[#f1f0ed] outline-none placeholder-neutral-600 w-48"
+                  className="bg-transparent text-xs text-[#f5f4f8] outline-none placeholder-neutral-600 w-48"
                 />
               </div>
             </div>
@@ -1602,32 +1538,32 @@ export default function App() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Left: Hackers looking for squad */}
               <div className="space-y-4">
-                <h3 className="text-sm font-bold text-[#f1f0ed] tracking-wider uppercase flex items-center space-x-2">
+                <h3 className="text-sm font-bold text-[#f5f4f8] tracking-wider uppercase flex items-center space-x-2">
                   <UserCheck className="w-4 h-4 text-[#9eea9a]" />
                   <span>AVAILABLE BUILDERS ({hackers.length})</span>
                 </h3>
 
                 <div className="space-y-4">
                   {hackers.map((hacker) => (
-                    <div key={hacker.id} className="p-5 border border-[#242326] bg-[#0c0c0e] space-y-3">
+                    <div key={hacker.id} className="ambient-card p-5 sm:p-6 rounded-3xl space-y-3">
                       <div className="flex items-start justify-between">
                         <div>
-                          <p className="font-bold text-sm text-[#f1f0ed]">{hacker.name}</p>
+                          <p className="font-bold text-sm text-[#f5f4f8]">{hacker.name}</p>
                           {hacker.githubUsername && (
-                            <p className="text-[10px] text-neutral-500">@{hacker.githubUsername}</p>
+                            <p className="text-[10px] text-[#8b8899]">@{hacker.githubUsername}</p>
                           )}
                         </div>
-                        <span className="px-2 py-0.5 text-[9px] font-mono text-[#9eea9a] border border-[#9eea9a]/30 bg-[#9eea9a]/10 uppercase">
+                        <span className="px-2.5 py-0.5 text-[9px] font-mono text-[#9eea9a] border border-[#9eea9a]/30 bg-[#9eea9a]/10 rounded-full uppercase font-semibold">
                           LOOKING FOR TEAM
                         </span>
                       </div>
 
-                      {hacker.bio && <p className="text-xs text-[#c8c6c3] leading-relaxed">{hacker.bio}</p>}
+                      {hacker.bio && <p className="text-xs text-[#c5c3d0] leading-relaxed font-sans">{hacker.bio}</p>}
 
                       {/* Skills */}
                       <div className="flex flex-wrap gap-1.5 pt-1">
                         {(hacker.skills || []).map((skill, idx) => (
-                          <span key={idx} className="px-2 py-0.5 text-[9px] text-[#a98be8] border border-[#242326] bg-[#121118]">
+                          <span key={idx} className="px-2.5 py-0.5 text-[9px] text-[#bfa5ff] border border-[rgba(191,165,255,0.2)] bg-[#13111b] rounded-full font-mono">
                             {skill}
                           </span>
                         ))}
@@ -1639,33 +1575,33 @@ export default function App() {
 
               {/* Right: Recruiting Teams */}
               <div className="space-y-4">
-                <h3 className="text-sm font-bold text-[#f1f0ed] tracking-wider uppercase flex items-center space-x-2">
-                  <UserPlus className="w-4 h-4 text-[#a98be8]" />
+                <h3 className="text-sm font-bold text-[#f5f4f8] tracking-wider uppercase flex items-center space-x-2">
+                  <UserPlus className="w-4 h-4 text-[#bfa5ff]" />
                   <span>RECRUITING SQUADS ({recruitingTeams.length})</span>
                 </h3>
 
                 <div className="space-y-4">
                   {recruitingTeams.map((team) => (
-                    <div key={team.id} className="p-5 border border-[#242326] bg-[#0c0c0e] space-y-3">
+                    <div key={team.id} className="ambient-card p-5 sm:p-6 rounded-3xl space-y-3">
                       <div className="flex items-start justify-between">
                         <div>
-                          <p className="font-bold text-sm text-[#f1f0ed]">{team.name}</p>
-                          <p className="text-[10px] text-neutral-500">{team.membersCount} / {team.maxMembers} Members</p>
+                          <p className="font-bold text-sm text-[#f5f4f8]">{team.name}</p>
+                          <p className="text-[10px] text-[#8b8899]">{team.membersCount} / {team.maxMembers} Members</p>
                         </div>
                         <button
                           onClick={() => setSelectedTeamForApply(team)}
-                          className="px-3 py-1 bg-[#bca1ee] hover:bg-[#caaefc] text-[#161218] text-[10px] font-bold tracking-wider uppercase"
+                          className="pill-cta px-3.5 py-1 text-[10px] font-bold tracking-wider uppercase"
                         >
                           APPLY TO JOIN
                         </button>
                       </div>
 
-                      {team.description && <p className="text-xs text-[#c8c6c3] leading-relaxed">{team.description}</p>}
+                      {team.description && <p className="text-xs text-[#c5c3d0] leading-relaxed font-sans">{team.description}</p>}
 
                       {/* Skills needed */}
                       <div className="flex flex-wrap gap-1.5 pt-1">
                         {(team.skillsNeeded || []).map((skill, idx) => (
-                          <span key={idx} className="px-2 py-0.5 text-[9px] text-neutral-400 border border-[#242326] bg-[#090909]">
+                          <span key={idx} className="px-2.5 py-0.5 text-[9px] text-[#8b8899] border border-[rgba(255,255,255,0.06)] bg-[#13111b] rounded-full font-mono">
                             Needed: {skill}
                           </span>
                         ))}
@@ -1684,15 +1620,15 @@ export default function App() {
         {activeTab === 'judging' && (
           <div className="space-y-8">
             {!currentUser ? (
-              <div className="border border-[#242326] bg-[#0c0c0e] p-12 text-center max-w-lg mx-auto space-y-4">
-                <Lock className="w-8 h-8 text-[#a98be8] mx-auto" />
-                <h3 className="text-base font-bold text-[#f1f0ed] uppercase tracking-wider">JUDGE AUTHENTICATION REQUIRED</h3>
-                <p className="text-xs text-[#c8c6c3] leading-relaxed">
+              <div className="ambient-card p-12 text-center max-w-lg mx-auto rounded-3xl space-y-4">
+                <Lock className="w-8 h-8 text-[#bfa5ff] mx-auto" />
+                <h3 className="text-base font-bold text-[#f5f4f8] uppercase tracking-wider">JUDGE AUTHENTICATION REQUIRED</h3>
+                <p className="text-xs text-[#c5c3d0] leading-relaxed">
                   Sign in with an official Judge or Organizer account to view your evaluation queue and score submissions.
                 </p>
                 <button
                   onClick={() => setShowAuthModal(true)}
-                  className="px-6 py-2.5 bg-[#bca1ee] text-[#161218] text-xs font-bold uppercase tracking-wider"
+                  className="pill-cta px-6 py-2.5 text-xs font-bold uppercase tracking-wider"
                 >
                   SIGN IN ↗
                 </button>
@@ -1700,10 +1636,10 @@ export default function App() {
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Left: Queue List */}
-                <div className="border border-[#242326] bg-[#0c0c0e] p-6 space-y-4">
-                  <h3 className="text-xs font-bold text-[#f1f0ed] tracking-wider uppercase flex justify-between items-center">
+                <div className="ambient-card p-6 rounded-3xl space-y-4">
+                  <h3 className="text-xs font-bold text-[#f5f4f8] tracking-wider uppercase flex justify-between items-center">
                     <span>EVALUATION QUEUE</span>
-                    <span className="text-[#a98be8]">{judgeAssignments.length} Assigned</span>
+                    <span className="text-[#bfa5ff] font-mono">{judgeAssignments.length} Assigned</span>
                   </h3>
 
                   <div className="space-y-2">
@@ -1711,15 +1647,15 @@ export default function App() {
                       <div
                         key={a.id}
                         onClick={() => setSelectedAssignment(a)}
-                        className={`p-4 border cursor-pointer transition ${
+                        className={`p-4 rounded-2xl border cursor-pointer transition ${
                           selectedAssignment?.id === a.id
-                            ? 'bg-[#15141c] border-[#a98be8]'
-                            : 'bg-[#090909] border-[#242326] hover:border-neutral-700'
+                            ? 'bg-[#181424] border-[#7a4ee0] shadow-md'
+                            : 'bg-[#070609] border-[rgba(255,255,255,0.06)] hover:border-[rgba(191,165,255,0.3)]'
                         }`}
                       >
                         <div className="flex justify-between items-start">
-                          <p className="font-bold text-xs text-[#f1f0ed]">{a.submission?.title}</p>
-                          <span className={`text-[8px] font-mono px-1.5 py-0.5 border ${
+                          <p className="font-bold text-xs text-[#f5f4f8]">{a.submission?.title}</p>
+                          <span className={`text-[8px] font-mono px-2 py-0.5 rounded-full border ${
                             a.status === 'COMPLETED'
                               ? 'border-[#9eea9a]/30 text-[#9eea9a] bg-[#9eea9a]/10'
                               : 'border-amber-400/30 text-amber-400 bg-amber-400/10'
@@ -1727,22 +1663,22 @@ export default function App() {
                             {a.status}
                           </span>
                         </div>
-                        <p className="text-[10px] text-neutral-500 mt-1">Team: {a.submission?.team?.name}</p>
+                        <p className="text-[10px] text-[#8b8899] mt-1 font-mono">Team: {a.submission?.team?.name}</p>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {/* Right: Rubric Scoring Form */}
-                <div className="lg:col-span-2 border border-[#242326] bg-[#0c0c0e] p-8 space-y-6">
+                <div className="lg:col-span-2 ambient-card p-8 rounded-3xl space-y-6">
                   {selectedAssignment ? (
                     <form onSubmit={handleScoreSubmit} className="space-y-6">
-                      <div className="border-b border-[#242326] pb-4">
-                        <span className="text-[10px] text-[#a98be8] font-bold tracking-widest uppercase">
+                      <div className="border-b border-[rgba(255,255,255,0.06)] pb-4">
+                        <span className="hud-mono-label text-[#bfa5ff] font-bold">
                           EVALUATING SUBMISSION
                         </span>
-                        <h2 className="text-xl font-bold text-[#f1f0ed] mt-1">{selectedAssignment.submission?.title}</h2>
-                        <p className="text-xs text-[#c8c6c3] mt-1">{selectedAssignment.submission?.tagline}</p>
+                        <h2 className="text-xl font-bold text-[#f5f4f8] mt-1">{selectedAssignment.submission?.title}</h2>
+                        <p className="text-xs text-[#c5c3d0] mt-1">{selectedAssignment.submission?.tagline}</p>
                       </div>
 
                       {/* Rubric Criteria Sliders */}
@@ -1753,10 +1689,10 @@ export default function App() {
                           { id: 'c3', name: 'Offline Resilience (20%)', minScore: 1, maxScore: 10 },
                           { id: 'c4', name: 'UI / UX Design Polish (20%)', minScore: 1, maxScore: 10 },
                         ]).map((crit) => (
-                          <div key={crit.id} className="bg-[#090909] p-5 border border-[#242326] space-y-3">
+                          <div key={crit.id} className="ambient-card p-5 rounded-2xl space-y-3">
                             <div className="flex justify-between items-center text-xs">
-                              <label className="font-bold text-[#f1f0ed]">{crit.name}</label>
-                              <span className="text-[#a98be8] font-bold">
+                              <label className="font-bold text-[#f5f4f8]">{crit.name}</label>
+                              <span className="text-[#bfa5ff] font-bold font-mono">
                                 {scoresInput[crit.id] || 8.0} / {crit.maxScore || 10}
                               </span>
                             </div>
@@ -1768,7 +1704,7 @@ export default function App() {
                               step="0.5"
                               value={scoresInput[crit.id] || 8.0}
                               onChange={(e) => setScoresInput({ ...scoresInput, [crit.id]: e.target.value })}
-                              className="w-full accent-[#a98be8] cursor-pointer"
+                              className="w-full accent-[#7a4ee0] cursor-pointer"
                             />
 
                             <input
@@ -1776,14 +1712,14 @@ export default function App() {
                               placeholder="Qualitative feedback comments..."
                               value={feedbackInput[crit.id] || ''}
                               onChange={(e) => setFeedbackInput({ ...feedbackInput, [crit.id]: e.target.value })}
-                              className="w-full bg-[#0c0c0e] border border-[#242326] px-3 py-2 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8]"
+                              className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-xl px-4 py-2 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
                             />
                           </div>
                         ))}
                       </div>
 
                       {scoreSuccess && (
-                        <div className="p-3 border border-[#9eea9a]/30 bg-[#9eea9a]/10 text-[#9eea9a] text-xs flex items-center space-x-2">
+                        <div className="p-3.5 rounded-2xl border border-[#9eea9a]/30 bg-[#9eea9a]/10 text-[#9eea9a] text-xs flex items-center space-x-2">
                           <CheckCircle2 className="w-4 h-4" />
                           <span>{scoreSuccess}</span>
                         </div>
@@ -1791,13 +1727,13 @@ export default function App() {
 
                       <button
                         type="submit"
-                        className="w-full py-3 bg-[#bca1ee] hover:bg-[#caaefc] text-[#161218] font-bold text-xs tracking-wider uppercase transition"
+                        className="pill-cta w-full py-3 text-xs font-bold tracking-wider uppercase"
                       >
                         SUBMIT FINAL RUBRIC SCORES
                       </button>
                     </form>
                   ) : (
-                    <p className="text-neutral-500 text-xs text-center py-20">Select an assigned project from the queue.</p>
+                    <p className="text-[#8b8899] text-xs text-center py-20">Select an assigned project from the queue.</p>
                   )}
                 </div>
               </div>
@@ -1808,13 +1744,13 @@ export default function App() {
 
       {/* Project Threaded Discussion Modal */}
       {discussionProject && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0c0c0e] border border-[#242326] p-6 md:p-8 max-w-2xl w-full max-h-[85vh] flex flex-col space-y-6 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-[#242326] pb-4">
+        <div className="fixed inset-0 z-50 bg-[#070609]/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="ambient-card p-6 md:p-8 rounded-3xl max-w-2xl w-full max-h-[85vh] flex flex-col space-y-6 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-[rgba(255,255,255,0.06)] pb-4">
               <div>
-                <span className="text-[10px] text-[#a98be8] font-bold tracking-widest uppercase">PROJECT DISCUSSION</span>
-                <h3 className="text-lg font-bold text-[#f1f0ed] flex items-center space-x-2">
-                  <MessageSquare className="w-4 h-4 text-[#a98be8]" />
+                <span className="hud-mono-label text-[#bfa5ff] font-bold">PROJECT DISCUSSION</span>
+                <h3 className="text-lg font-bold text-[#f5f4f8] flex items-center space-x-2 mt-1">
+                  <MessageSquare className="w-4 h-4 text-[#bfa5ff]" />
                   <span>{discussionProject.title}</span>
                 </h3>
               </div>
@@ -1824,16 +1760,16 @@ export default function App() {
                   setReplyParentId(null);
                   setReplyParentAuthor('');
                 }}
-                className="text-neutral-500 hover:text-white text-lg font-bold p-1"
+                className="p-1 rounded-full text-[#8b8899] hover:text-white hover:bg-[#1e1a2c]"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Comments List */}
             <div className="flex-1 overflow-y-auto space-y-4 pr-2">
               {commentsList.length === 0 ? (
-                <div className="text-center py-12 text-neutral-500 text-xs">
+                <div className="text-center py-12 text-[#8b8899] text-xs">
                   No comments yet. Be the first to start the discussion!
                 </div>
               ) : (
@@ -1842,11 +1778,11 @@ export default function App() {
             </div>
 
             {/* Comment Composer */}
-            <div className="border-t border-[#242326] pt-4 space-y-2">
+            <div className="border-t border-[rgba(255,255,255,0.06)] pt-4 space-y-2">
               {replyParentId && (
-                <div className="flex items-center justify-between text-xs bg-[#121118] px-3 py-1.5 border border-[#242326]">
-                  <span className="text-neutral-400">
-                    Replying to <strong className="text-[#f1f0ed]">{replyParentAuthor}</strong>
+                <div className="flex items-center justify-between text-xs bg-[#13111b] px-3.5 py-1.5 rounded-full border border-[rgba(255,255,255,0.08)]">
+                  <span className="text-[#8b8899]">
+                    Replying to <strong className="text-[#f5f4f8]">{replyParentAuthor}</strong>
                   </span>
                   <button
                     onClick={() => {
@@ -1866,12 +1802,12 @@ export default function App() {
                   disabled={!currentUser}
                   value={commentInput}
                   onChange={(e) => setCommentInput(e.target.value)}
-                  className="flex-1 bg-[#090909] border border-[#242326] px-4 py-2.5 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8] disabled:opacity-50"
+                  className="flex-1 bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-full px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0] disabled:opacity-50"
                 />
                 <button
                   type="submit"
                   disabled={!currentUser || !commentInput.trim()}
-                  className="px-5 py-2.5 bg-[#bca1ee] hover:bg-[#caaefc] disabled:opacity-50 text-[#161218] font-bold text-xs tracking-wider uppercase transition flex items-center space-x-1.5"
+                  className="pill-cta px-6 py-2.5 disabled:opacity-50 text-xs font-bold tracking-wider uppercase flex items-center space-x-1.5"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>POST</span>
@@ -1884,37 +1820,37 @@ export default function App() {
 
       {/* Team Application Modal */}
       {selectedTeamForApply && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0c0c0e] border border-[#242326] p-8 max-w-md w-full space-y-6 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-[#242326] pb-4">
+        <div className="fixed inset-0 z-50 bg-[#070609]/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="ambient-card p-8 rounded-3xl max-w-md w-full space-y-6 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-[rgba(255,255,255,0.06)] pb-4">
               <div>
-                <span className="text-[10px] text-[#a98be8] font-bold tracking-widest uppercase">SQUAD APPLICATION</span>
-                <h3 className="text-base font-bold text-[#f1f0ed]">{selectedTeamForApply.name}</h3>
+                <span className="hud-mono-label text-[#bfa5ff] font-bold">SQUAD APPLICATION</span>
+                <h3 className="text-base font-bold text-[#f5f4f8] mt-1">{selectedTeamForApply.name}</h3>
               </div>
               <button
                 onClick={() => setSelectedTeamForApply(null)}
-                className="text-neutral-500 hover:text-white text-lg font-bold"
+                className="p-1 rounded-full text-[#8b8899] hover:text-white hover:bg-[#1e1a2c]"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleApplyToTeam} className="space-y-4">
               <div>
-                <label className="block text-xs text-[#c8c6c3] mb-1">Application Message</label>
+                <label className="block text-xs text-[#c5c3d0] mb-1">Application Message</label>
                 <textarea
                   rows={3}
                   required
                   placeholder="Introduce yourself and your skills..."
                   value={applyMessage}
                   onChange={(e) => setApplyMessage(e.target.value)}
-                  className="w-full bg-[#090909] border border-[#242326] px-4 py-2.5 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8]"
+                  className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3 bg-[#bca1ee] hover:bg-[#caaefc] text-[#161218] font-bold text-xs tracking-wider uppercase transition"
+                className="pill-cta w-full py-3 text-xs font-bold tracking-wider uppercase"
               >
                 SUBMIT APPLICATION
               </button>
@@ -1927,23 +1863,23 @@ export default function App() {
       {/* IN-APP NOTIFICATION CENTER MODAL / DRAWER (Phase 19) */}
       {/* ============================================================ */}
       {showNotificationDrawer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#0d0d0d] border border-[#242326] max-w-lg w-full p-6 space-y-5 shadow-2xl relative max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-[#242326] pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#070609]/80 backdrop-blur-md">
+          <div className="ambient-card max-w-lg w-full p-6 sm:p-7 rounded-3xl space-y-5 shadow-2xl relative max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.06)] pb-4">
               <div className="flex items-center space-x-2">
-                <Bell className="w-4 h-4 text-[#a98be8]" />
-                <h3 className="text-sm font-bold tracking-wider text-[#f1f0ed] uppercase">
+                <Bell className="w-4 h-4 text-[#bfa5ff]" />
+                <h3 className="text-sm font-bold tracking-tight text-[#f5f4f8] uppercase">
                   NOTIFICATIONS // INBOX
                 </h3>
                 {unreadCount > 0 && (
-                  <span className="px-1.5 py-0.2 text-[9px] bg-[#bca1ee] text-[#161218] font-bold">
+                  <span className="px-2 py-0.5 text-[9px] bg-[#7a4ee0] text-white rounded-full font-bold font-mono">
                     {unreadCount} NEW
                   </span>
                 )}
               </div>
               <button
                 onClick={() => setShowNotificationDrawer(false)}
-                className="text-neutral-500 hover:text-white"
+                className="p-1 rounded-full text-[#8b8899] hover:text-white hover:bg-[#1e1a2c]"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1954,20 +1890,20 @@ export default function App() {
               <div className="flex space-x-2">
                 <button
                   onClick={() => setNotificationFilter('all')}
-                  className={`px-2.5 py-1 text-[10px] font-mono uppercase transition ${
+                  className={`px-3 py-1 text-[10px] font-mono uppercase rounded-full transition ${
                     notificationFilter === 'all'
-                      ? 'bg-[#bca1ee] text-[#161218] font-bold'
-                      : 'border border-[#242326] text-neutral-400 hover:text-white'
+                      ? 'bg-[#1e1a2c] text-[#f5f4f8] font-bold border border-[rgba(191,165,255,0.3)]'
+                      : 'border border-[rgba(255,255,255,0.06)] text-[#8b8899] hover:text-white'
                   }`}
                 >
                   ALL ({notifications.length})
                 </button>
                 <button
                   onClick={() => setNotificationFilter('unread')}
-                  className={`px-2.5 py-1 text-[10px] font-mono uppercase transition ${
+                  className={`px-3 py-1 text-[10px] font-mono uppercase rounded-full transition ${
                     notificationFilter === 'unread'
-                      ? 'bg-[#bca1ee] text-[#161218] font-bold'
-                      : 'border border-[#242326] text-neutral-400 hover:text-white'
+                      ? 'bg-[#1e1a2c] text-[#f5f4f8] font-bold border border-[rgba(191,165,255,0.3)]'
+                      : 'border border-[rgba(255,255,255,0.06)] text-[#8b8899] hover:text-white'
                   }`}
                 >
                   UNREAD ({unreadCount})
@@ -1977,43 +1913,43 @@ export default function App() {
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllNotifsRead}
-                  className="text-[10px] text-[#a98be8] hover:text-[#caaefc] flex items-center space-x-1"
+                  className="text-[10px] text-[#bfa5ff] hover:text-white flex items-center space-x-1 font-medium"
                 >
-                  <CheckCheck className="w-3 h-3" />
+                  <CheckCheck className="w-3.5 h-3.5" />
                   <span>Mark all as read</span>
                 </button>
               )}
             </div>
 
             {/* Notifications Scrollable List */}
-            <div className="flex-1 overflow-y-auto space-y-3 pr-1 divide-y divide-[#1a191d]">
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1 divide-y divide-[rgba(255,255,255,0.04)]">
               {notifications
                 .filter(n => notificationFilter === 'all' || !n.isRead)
                 .map((notif) => (
                   <div
                     key={notif.id}
-                    className={`pt-3 first:pt-0 space-y-2 ${!notif.isRead ? 'bg-[#121118]/40 p-3 border border-[#a98be8]/20' : ''}`}
+                    className={`pt-3 first:pt-0 space-y-2 rounded-2xl ${!notif.isRead ? 'bg-[#181424]/40 p-3 border border-[rgba(191,165,255,0.2)]' : ''}`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center space-x-2">
                         {!notif.isRead && (
                           <span className="w-1.5 h-1.5 rounded-full bg-[#9eea9a] flex-shrink-0"></span>
                         )}
-                        <span className="text-[9px] px-1.5 py-0.2 font-mono uppercase bg-[#1f1e24] text-[#a98be8] border border-[#2d2b33]">
+                        <span className="text-[9px] px-2 py-0.5 font-mono uppercase bg-[#1e1a2c] text-[#bfa5ff] rounded-full border border-[rgba(191,165,255,0.2)]">
                           {notif.type}
                         </span>
-                        <h4 className="text-xs font-bold text-[#f1f0ed]">{notif.title}</h4>
+                        <h4 className="text-xs font-bold text-[#f5f4f8]">{notif.title}</h4>
                       </div>
-                      <span className="text-[9px] text-neutral-500 font-mono flex-shrink-0">
+                      <span className="text-[9px] text-[#8b8899] font-mono flex-shrink-0">
                         {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
 
-                    <p className="text-xs text-[#c8c6c3] leading-relaxed pl-3.5">
+                    <p className="text-xs text-[#c5c3d0] leading-relaxed pl-3.5 font-sans">
                       {notif.message}
                     </p>
 
-                    <div className="flex items-center justify-between pt-1 pl-3.5 text-[10px] font-mono text-neutral-500">
+                    <div className="flex items-center justify-between pt-1 pl-3.5 text-[10px] font-mono text-[#8b8899]">
                       {notif.link ? (
                         <button
                           onClick={() => {
@@ -2021,7 +1957,7 @@ export default function App() {
                             if (notif.link.includes('announcements')) setActiveTab('announcements');
                             if (notif.link.includes('matchmaking')) setActiveTab('hackers');
                           }}
-                          className="text-[#a98be8] hover:underline flex items-center space-x-1"
+                          className="text-[#bfa5ff] hover:underline flex items-center space-x-1"
                         >
                           <span>View Details</span>
                           <ExternalLink className="w-2.5 h-2.5" />
@@ -2051,7 +1987,7 @@ export default function App() {
                 ))}
 
               {notifications.filter(n => notificationFilter === 'all' || !n.isRead).length === 0 && (
-                <div className="p-8 border border-dashed border-[#242326] text-center text-xs text-neutral-500">
+                <div className="p-8 ambient-card rounded-2xl text-center text-xs text-[#8b8899]">
                   Zero notifications to display.
                 </div>
               )}
@@ -2062,86 +1998,86 @@ export default function App() {
 
       {/* Auth Modal with Quick Demo Accounts */}
       {showAuthModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0c0c0e] border border-[#242326] p-8 max-w-md w-full space-y-6 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-[#242326] pb-4">
-              <h3 className="text-base font-bold text-[#f1f0ed] flex items-center space-x-2 tracking-wider uppercase">
-                <LogIn className="w-4 h-4 text-[#a98be8]" />
+        <div className="fixed inset-0 z-50 bg-[#070609]/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="ambient-card p-8 rounded-3xl max-w-md w-full space-y-6 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-[rgba(255,255,255,0.06)] pb-4">
+              <h3 className="text-base font-bold text-[#f5f4f8] flex items-center space-x-2 tracking-tight uppercase">
+                <LogIn className="w-4 h-4 text-[#bfa5ff]" />
                 <span>SIGN IN TO DOGFOOD 2026</span>
               </h3>
               <button
                 onClick={() => setShowAuthModal(false)}
-                className="text-neutral-500 hover:text-white text-lg font-bold"
+                className="p-1 rounded-full text-[#8b8899] hover:text-white hover:bg-[#1e1a2c]"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Quick Login Test Accounts */}
             <div className="space-y-2">
-              <p className="text-[10px] font-mono text-[#c8c6c3] tracking-widest uppercase">ONE-CLICK DEMO ACCOUNTS:</p>
+              <p className="hud-mono-label">ONE-CLICK DEMO ACCOUNTS:</p>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('organizer@dogfood.test')}
-                  className="p-2.5 bg-[#121118] border border-[#242326] hover:border-[#a98be8] text-left text-xs transition"
+                  className="p-3 bg-[#0c0b12] border border-[rgba(255,255,255,0.08)] hover:border-[rgba(191,165,255,0.3)] rounded-2xl text-left text-xs transition"
                 >
-                  <p className="font-bold text-[#f1f0ed]">Organizer</p>
-                  <p className="text-[10px] text-[#a98be8]">Full Control</p>
+                  <p className="font-bold text-[#f5f4f8]">Organizer</p>
+                  <p className="text-[10px] text-[#bfa5ff]">Full Control</p>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('judge1@dogfood.test')}
-                  className="p-2.5 bg-[#121118] border border-[#242326] hover:border-[#a98be8] text-left text-xs transition"
+                  className="p-3 bg-[#0c0b12] border border-[rgba(255,255,255,0.08)] hover:border-[rgba(191,165,255,0.3)] rounded-2xl text-left text-xs transition"
                 >
-                  <p className="font-bold text-[#f1f0ed]">Judge Elena</p>
+                  <p className="font-bold text-[#f5f4f8]">Judge Elena</p>
                   <p className="text-[10px] text-amber-400">Scoring Queue</p>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('alice@dogfood.test')}
-                  className="p-2.5 bg-[#121118] border border-[#242326] hover:border-[#a98be8] text-left text-xs transition"
+                  className="p-3 bg-[#0c0b12] border border-[rgba(255,255,255,0.08)] hover:border-[rgba(191,165,255,0.3)] rounded-2xl text-left text-xs transition"
                 >
-                  <p className="font-bold text-[#f1f0ed]">Alice (Leader)</p>
+                  <p className="font-bold text-[#f5f4f8]">Alice (Leader)</p>
                   <p className="text-[10px] text-[#9eea9a]">Team Alpha</p>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('bob@dogfood.test')}
-                  className="p-2.5 bg-[#121118] border border-[#242326] hover:border-[#a98be8] text-left text-xs transition"
+                  className="p-3 bg-[#0c0b12] border border-[rgba(255,255,255,0.08)] hover:border-[rgba(191,165,255,0.3)] rounded-2xl text-left text-xs transition"
                 >
-                  <p className="font-bold text-[#f1f0ed]">Bob (Hacker)</p>
+                  <p className="font-bold text-[#f5f4f8]">Bob (Hacker)</p>
                   <p className="text-[10px] text-[#9eea9a]">Participant</p>
                 </button>
               </div>
             </div>
 
             <div className="relative flex py-1 items-center">
-              <div className="flex-grow border-t border-[#242326]"></div>
-              <span className="flex-shrink mx-3 text-[9px] font-mono text-neutral-500 uppercase tracking-wider">OR EMAIL</span>
-              <div className="flex-grow border-t border-[#242326]"></div>
+              <div className="flex-grow border-t border-[rgba(255,255,255,0.06)]"></div>
+              <span className="flex-shrink mx-3 text-[9px] font-mono text-[#8b8899] uppercase tracking-wider">OR EMAIL</span>
+              <div className="flex-grow border-t border-[rgba(255,255,255,0.06)]"></div>
             </div>
 
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="block text-[11px] text-[#c8c6c3] mb-1">Email Address</label>
+                <label className="block text-[11px] text-[#c5c3d0] mb-1">Email Address</label>
                 <input
                   type="email"
                   required
                   value={authEmail}
                   onChange={(e) => setAuthEmail(e.target.value)}
-                  className="w-full bg-[#090909] border border-[#242326] px-4 py-2.5 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8]"
+                  className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] text-[#c8c6c3] mb-1">Password</label>
+                <label className="block text-[11px] text-[#c5c3d0] mb-1">Password</label>
                 <input
                   type="password"
                   required
                   value={authPassword}
                   onChange={(e) => setAuthPassword(e.target.value)}
-                  className="w-full bg-[#090909] border border-[#242326] px-4 py-2.5 text-xs text-[#f1f0ed] outline-none focus:border-[#a98be8]"
+                  className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
                 />
               </div>
 
@@ -2151,7 +2087,7 @@ export default function App() {
 
               <button
                 type="submit"
-                className="w-full py-3 bg-[#bca1ee] hover:bg-[#caaefc] text-[#161218] font-bold text-xs tracking-wider uppercase transition"
+                className="pill-cta w-full py-3 text-xs font-bold tracking-wider uppercase"
               >
                 SIGN IN
               </button>
@@ -2160,11 +2096,11 @@ export default function App() {
         </div>
       )}
 
-      {/* Minimal Footer (DESIGN.md) */}
-      <footer className="border-t border-[#242326] py-6 px-8 flex flex-col sm:flex-row justify-between items-center text-[10px] font-mono text-[#c8c6c3] bg-[#090909] gap-4">
+      {/* Minimalist Atmospheric Footer (Dogfood_Design_Reference.md) */}
+      <footer className="border-t border-[rgba(255,255,255,0.06)] py-6 px-8 flex flex-col sm:flex-row justify-between items-center text-[10px] font-mono text-[#8b8899] bg-[#070609] gap-4">
         <div className="flex items-center space-x-2">
-          <span className="w-1.5 h-1.5 rounded-none bg-[#9eea9a]"></span>
-          <span>DOGFOOD 2026 PLATFORM // NEXERA ARCHITECTURE</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-[#9eea9a]"></span>
+          <span>DOGFOOD 2026 // NEXERA ARCHITECTURE</span>
         </div>
         <span>100% OFFLINE-FIRST // ZERO EXTERNAL RUNTIME DEPENDENCIES</span>
       </footer>
