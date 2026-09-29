@@ -35,6 +35,9 @@ import {
   Clock,
   Compass,
   HelpCircle,
+  Target,
+  Coins,
+  Gift,
   X
 } from 'lucide-react';
 import ReferenceHero from './components/ReferenceHero';
@@ -103,6 +106,25 @@ export default function App() {
   const [slotEnd, setSlotEnd] = useState('');
   const [slotLocation, setSlotLocation] = useState('');
 
+  // Community Bounties & Side Challenges state (Phase 23)
+  const [bounties, setBounties] = useState([]);
+  const [bountyCategoryFilter, setBountyCategoryFilter] = useState('ALL');
+  const [bountySearchQuery, setBountySearchQuery] = useState('');
+  const [selectedBountyForDetails, setSelectedBountyForDetails] = useState(null);
+  const [selectedBountyForSubmit, setSelectedBountyForSubmit] = useState(null);
+  const [bountySubmissionsList, setBountySubmissionsList] = useState([]);
+  const [bountySubmitTitle, setBountySubmitTitle] = useState('');
+  const [bountySubmitDesc, setBountySubmitDesc] = useState('');
+  const [bountySubmitProof, setBountySubmitProof] = useState('');
+  const [showCreateBountyModal, setShowCreateBountyModal] = useState(false);
+  const [newBountyTitle, setNewBountyTitle] = useState('');
+  const [newBountyDesc, setNewBountyDesc] = useState('');
+  const [newBountyReward, setNewBountyReward] = useState('');
+  const [newBountyCategory, setNewBountyCategory] = useState('FEATURE');
+  const [newBountySponsor, setNewBountySponsor] = useState('');
+  const [newBountyReqs, setNewBountyReqs] = useState('');
+  const [newBountyDeadline, setNewBountyDeadline] = useState('');
+
   // In-App Notification Center & Activity Feed state (Phase 19)
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -165,6 +187,7 @@ export default function App() {
   // 3. Tab-based data fetching
   useEffect(() => {
     if (activeTab === 'gallery') fetchGallery();
+    if (activeTab === 'bounties') fetchBounties();
     if (activeTab === 'leaderboard') fetchLeaderboard();
     if (activeTab === 'activity') fetchActivities();
     if (activeTab === 'announcements') fetchAnnouncements();
@@ -179,7 +202,7 @@ export default function App() {
     }
     if (activeTab === 'judging') fetchJudgingQueue();
     if (activeTab === 'overview') fetchWinners();
-  }, [activeTab, leaderboardMode, selectedTrack, searchQuery, hackerSkillFilter, mentorSkillFilter, ticketStatusFilter, token]);
+  }, [activeTab, leaderboardMode, selectedTrack, searchQuery, hackerSkillFilter, mentorSkillFilter, ticketStatusFilter, bountyCategoryFilter, bountySearchQuery, token]);
 
   // 4. Real-time In-App Notification Center SSE Stream
   useEffect(() => {
@@ -762,6 +785,142 @@ export default function App() {
       .catch(() => showToast('Network error creating office hour slot.'));
   };
 
+  // Community Bounties & Challenges Handlers (Phase 23)
+  const fetchBounties = () => {
+    let url = '/api/bounties';
+    const params = [];
+    if (bountyCategoryFilter !== 'ALL') params.push(`category=${encodeURIComponent(bountyCategoryFilter)}`);
+    if (bountySearchQuery.trim()) params.push(`search=${encodeURIComponent(bountySearchQuery.trim())}`);
+    if (params.length > 0) url += `?${params.join('&')}`;
+
+    fetch(url)
+      .then(res => res.json())
+      .then(data => setBounties(data.bounties || []))
+      .catch(console.error);
+  };
+
+  const fetchBountySubmissions = (bountyId) => {
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    fetch(`/api/bounties/${bountyId}/submissions`, { headers })
+      .then(res => res.json())
+      .then(data => setBountySubmissionsList(data.submissions || []))
+      .catch(console.error);
+  };
+
+  const handleCreateBounty = (e) => {
+    if (e) e.preventDefault();
+    if (!token) {
+      setShowAuthModal(true);
+      return;
+    }
+    if (!newBountyTitle.trim() || !newBountyDesc.trim() || !newBountyReward.trim()) {
+      showToast('⚠️ Please provide title, description, and reward amount.');
+      return;
+    }
+
+    const eventId = eventData?.id || 'event-dogfood-2026';
+    fetch('/api/bounties', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        eventId,
+        title: newBountyTitle.trim(),
+        description: newBountyDesc.trim(),
+        rewardAmount: newBountyReward.trim(),
+        category: newBountyCategory,
+        sponsorName: newBountySponsor.trim() || undefined,
+        requirements: newBountyReqs.trim() || undefined,
+        deadline: newBountyDeadline ? new Date(newBountyDeadline).toISOString() : undefined,
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.bounty) {
+          showToast('🎯 Bounty challenge published to tournament!');
+          setShowCreateBountyModal(false);
+          setNewBountyTitle('');
+          setNewBountyDesc('');
+          setNewBountyReward('');
+          setNewBountySponsor('');
+          setNewBountyReqs('');
+          setNewBountyDeadline('');
+          fetchBounties();
+        } else {
+          showToast(`⚠️ ${data.error || 'Failed to create bounty.'}`);
+        }
+      })
+      .catch(() => showToast('Network error publishing bounty.'));
+  };
+
+  const handleSubmitBountyWork = (e) => {
+    if (e) e.preventDefault();
+    if (!token) {
+      setShowAuthModal(true);
+      return;
+    }
+    if (!selectedBountyForSubmit || !bountySubmitTitle.trim() || !bountySubmitDesc.trim() || !bountySubmitProof.trim()) {
+      showToast('⚠️ Please provide solution title, description, and proof URL.');
+      return;
+    }
+
+    fetch(`/api/bounties/${selectedBountyForSubmit.id}/submit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        title: bountySubmitTitle.trim(),
+        description: bountySubmitDesc.trim(),
+        proofUrl: bountySubmitProof.trim()
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.submission) {
+          showToast('🚀 Bounty solution submitted for review!');
+          setSelectedBountyForSubmit(null);
+          setBountySubmitTitle('');
+          setBountySubmitDesc('');
+          setBountySubmitProof('');
+          fetchBounties();
+        } else {
+          showToast(`⚠️ ${data.error || 'Failed to submit bounty solution.'}`);
+        }
+      })
+      .catch(() => showToast('Network error submitting bounty solution.'));
+  };
+
+  const handleReviewBountySubmission = (bountyId, submissionId, status) => {
+    if (!token) return;
+    const feedback = prompt(status === 'APPROVED' ? 'Optional feedback for winner:' : 'Optional reason for rejection:');
+    fetch(`/api/bounties/${bountyId}/submissions/${submissionId}/review`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        status,
+        feedback: feedback || undefined
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.submission) {
+          showToast(`🏆 ${data.message}`);
+          fetchBountySubmissions(bountyId);
+          fetchBounties();
+        } else {
+          showToast(`⚠️ ${data.error || 'Failed to review submission.'}`);
+        }
+      })
+      .catch(() => showToast('Network error reviewing submission.'));
+  };
+
   const openProjectComments = (project) => {
     setDiscussionProject(project);
     fetchCommentsForProject(project.id);
@@ -1340,6 +1499,193 @@ export default function App() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* TAB: COMMUNITY BOUNTIES & SIDE CHALLENGES (Phase 23) */}
+        {/* ============================================================ */}
+        {activeTab === 'bounties' && (
+          <div className="space-y-8">
+            {/* Header & Controls */}
+            <div className="border-b border-[rgba(255,255,255,0.06)] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold tracking-tight text-[#f5f4f8] uppercase flex items-center space-x-2">
+                  <Target className="w-5 h-5 text-[#bfa5ff]" />
+                  <span>COMMUNITY BOUNTIES & SIDE CHALLENGES</span>
+                </h2>
+                <p className="text-xs text-[#c5c3d0] mt-1 font-sans">
+                  High-impact technical challenges, sponsor quests, and optimization bounties with instant reputation payouts.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center bg-[#0c0b12] border border-[rgba(255,255,255,0.08)] rounded-full px-3 py-1.5 text-xs">
+                  <Search className="w-3.5 h-3.5 text-[#8b8899] mr-2" />
+                  <input
+                    type="text"
+                    placeholder="Search bounties..."
+                    value={bountySearchQuery}
+                    onChange={(e) => setBountySearchQuery(e.target.value)}
+                    className="bg-transparent text-xs text-[#f5f4f8] outline-none placeholder-neutral-600 w-36 sm:w-44"
+                  />
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (!token) setShowAuthModal(true);
+                    else setShowCreateBountyModal(true);
+                  }}
+                  className="pill-cta px-4 py-2 text-xs flex items-center space-x-1.5"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>PUBLISH BOUNTY</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Category Filter Chips */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2">
+              {['ALL', 'PERFORMANCE', 'SECURITY', 'AI', 'INFRASTRUCTURE', 'FEATURE', 'DESIGN'].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setBountyCategoryFilter(cat)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-mono uppercase transition whitespace-nowrap ${
+                    bountyCategoryFilter === cat
+                      ? 'bg-[#1e1a2c] text-[#f5f4f8] font-bold border border-[rgba(191,165,255,0.3)]'
+                      : 'border border-[rgba(255,255,255,0.06)] text-[#8b8899] hover:text-white bg-[#0c0b12]'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Bounties Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {bounties.map((b) => (
+                <div
+                  key={b.id}
+                  className="ambient-card p-6 rounded-3xl space-y-4 flex flex-col justify-between hover:border-[rgba(191,165,255,0.4)] transition-all duration-300 group"
+                >
+                  <div className="space-y-3">
+                    {/* Top Row: Category & Status */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[9px] font-mono px-2.5 py-0.5 rounded-full bg-[#13111b] border border-[rgba(191,165,255,0.2)] text-[#bfa5ff] font-bold uppercase">
+                          {b.category}
+                        </span>
+                        {b.sponsorName && (
+                          <span className="text-[10px] text-[#8b8899] font-medium font-sans">
+                            by {b.sponsorName}
+                          </span>
+                        )}
+                      </div>
+
+                      <span className={`text-[8px] font-mono font-bold px-2.5 py-0.5 rounded-full border uppercase ${
+                        b.status === 'OPEN'
+                          ? 'border-[#9eea9a]/30 text-[#9eea9a] bg-[#9eea9a]/10'
+                          : b.status === 'AWARDED'
+                          ? 'border-amber-400/30 text-amber-300 bg-amber-400/10'
+                          : 'border-neutral-700 text-neutral-400 bg-neutral-900'
+                      }`}>
+                        {b.status === 'OPEN' ? '● LIVE BOUNTY' : b.status === 'AWARDED' ? '★ AWARDED' : b.status}
+                      </span>
+                    </div>
+
+                    {/* Reward Callout */}
+                    <div className="bg-[#120e20]/60 border border-[rgba(191,165,255,0.15)] p-3 rounded-2xl flex items-center justify-between">
+                      <span className="text-[10px] font-mono text-[#bfa5ff] uppercase tracking-wider">REWARD POOL</span>
+                      <span className="text-sm font-extrabold text-[#f5f4f8] font-mono tracking-tight text-right">
+                        {b.rewardAmount}
+                      </span>
+                    </div>
+
+                    {/* Title & Description */}
+                    <div>
+                      <h3 className="text-base font-bold text-[#f5f4f8] group-hover:text-[#bfa5ff] transition-colors leading-snug">
+                        {b.title}
+                      </h3>
+                      <p className="text-xs text-[#c5c3d0] leading-relaxed mt-1.5 line-clamp-3 font-sans">
+                        {b.description}
+                      </p>
+                    </div>
+
+                    {/* Requirements snippet if available */}
+                    {b.requirements && (
+                      <div className="text-[10px] font-mono text-[#8b8899] bg-[#0c0b12] p-2.5 rounded-xl border border-[rgba(255,255,255,0.04)]">
+                        <strong className="text-[#c5c3d0]">Reqs:</strong> {b.requirements}
+                      </div>
+                    )}
+
+                    {/* Winner Capsule if AWARDED */}
+                    {b.winner && (
+                      <div className="p-3 rounded-2xl bg-amber-950/20 border border-amber-500/30 text-[11px] text-amber-200/90 space-y-1">
+                        <div className="flex items-center space-x-1.5 font-bold">
+                          <span>🏆</span>
+                          <span>Champion: {b.winner.submitter?.name}</span>
+                        </div>
+                        <p className="text-[10px] text-amber-300/70 truncate">
+                          "{b.winner.title}"
+                        </p>
+                        {b.winner.proofUrl && (
+                          <a
+                            href={b.winner.proofUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[10px] text-[#bfa5ff] hover:underline flex items-center space-x-1 pt-0.5"
+                          >
+                            <span>Inspect Solution Proof</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions & Submissions Count */}
+                  <div className="pt-3 border-t border-[rgba(255,255,255,0.06)] space-y-2.5">
+                    <div className="flex items-center justify-between text-[10px] font-mono text-[#8b8899]">
+                      <span>{b.submissionsCount} {b.submissionsCount === 1 ? 'Solution' : 'Solutions'} Submitted</span>
+                      {b.deadline && (
+                        <span>Due {new Date(b.deadline).toLocaleDateString()}</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {b.status === 'OPEN' && (
+                        <button
+                          onClick={() => {
+                            if (!token) setShowAuthModal(true);
+                            else setSelectedBountyForSubmit(b);
+                          }}
+                          className="pill-cta flex-1 py-2 text-xs font-bold uppercase tracking-wider text-center"
+                        >
+                          SUBMIT SOLUTION ↗
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setSelectedBountyForDetails(b);
+                          fetchBountySubmissions(b.id);
+                        }}
+                        className="px-3.5 py-2 rounded-full text-xs font-semibold text-[#bfa5ff] bg-[#161322] hover:bg-[#201a35] border border-[rgba(191,165,255,0.25)] transition flex items-center justify-center"
+                      >
+                        SUBMISSIONS ({b.submissionsCount})
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {bounties.length === 0 && (
+              <div className="ambient-card p-12 text-center rounded-3xl text-xs text-[#8b8899] space-y-2">
+                <Target className="w-8 h-8 text-[#bfa5ff] mx-auto opacity-50" />
+                <p>Zero bounties found in this category.</p>
               </div>
             )}
           </div>
@@ -2888,6 +3234,279 @@ export default function App() {
                 className="pill-cta w-full py-3 text-xs font-bold tracking-wider uppercase"
               >
                 PUBLISH OFFICE HOURS SLOT
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* PHASE 23 BOUNTY MODALS */}
+      {/* ============================================================ */}
+
+      {/* 1. Submit Bounty Solution Modal */}
+      {selectedBountyForSubmit && (
+        <div className="fixed inset-0 z-50 bg-[#070609]/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="ambient-card p-8 rounded-3xl max-w-lg w-full space-y-6 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-[rgba(255,255,255,0.06)] pb-4">
+              <div>
+                <span className="hud-mono-label text-[#bfa5ff]">BOUNTY SUBMISSION</span>
+                <h3 className="text-base font-bold text-[#f5f4f8] mt-1 line-clamp-1">{selectedBountyForSubmit.title}</h3>
+                <p className="text-[10px] text-[#8b8899] font-mono">Reward: {selectedBountyForSubmit.rewardAmount}</p>
+              </div>
+              <button
+                onClick={() => setSelectedBountyForSubmit(null)}
+                className="p-1 rounded-full text-[#8b8899] hover:text-white hover:bg-[#1e1a2c]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitBountyWork} className="space-y-4">
+              <div>
+                <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Solution Title</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. SIMD-Accelerated Prover Implementation"
+                  value={bountySubmitTitle}
+                  onChange={(e) => setBountySubmitTitle(e.target.value)}
+                  className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Proof of Work / Repository URL</label>
+                <input
+                  type="url"
+                  required
+                  placeholder="https://github.com/username/project or PR link"
+                  value={bountySubmitProof}
+                  onChange={(e) => setBountySubmitProof(e.target.value)}
+                  className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Technical Implementation Details</label>
+                <textarea
+                  rows={4}
+                  required
+                  placeholder="Explain how your solution satisfies the bounty requirements and benchmark results..."
+                  value={bountySubmitDesc}
+                  onChange={(e) => setBountySubmitDesc(e.target.value)}
+                  className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0] resize-none font-sans"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="pill-cta w-full py-3 text-xs font-bold tracking-wider uppercase"
+              >
+                SUBMIT SOLUTION FOR REVIEW
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Bounty Submissions & Review Drawer Modal */}
+      {selectedBountyForDetails && (
+        <div className="fixed inset-0 z-50 bg-[#070609]/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="ambient-card p-6 sm:p-8 rounded-3xl max-w-2xl w-full max-h-[85vh] flex flex-col space-y-5 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-[rgba(255,255,255,0.06)] pb-4">
+              <div>
+                <span className="hud-mono-label text-[#bfa5ff]">SUBMISSIONS INSPECTION</span>
+                <h3 className="text-base font-bold text-[#f5f4f8] mt-1">{selectedBountyForDetails.title}</h3>
+                <p className="text-[10px] text-[#8b8899] font-mono">Reward: {selectedBountyForDetails.rewardAmount}</p>
+              </div>
+              <button
+                onClick={() => setSelectedBountyForDetails(null)}
+                className="p-1 rounded-full text-[#8b8899] hover:text-white hover:bg-[#1e1a2c]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Submissions List */}
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+              {bountySubmissionsList.map((sub) => (
+                <div key={sub.id} className="p-5 rounded-2xl bg-[#0c0b12] border border-[rgba(255,255,255,0.06)] space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <h4 className="font-bold text-sm text-[#f5f4f8]">{sub.title}</h4>
+                        <span className={`text-[8px] font-mono px-2 py-0.5 rounded-full border uppercase font-bold ${
+                          sub.status === 'APPROVED'
+                            ? 'border-amber-400/30 text-amber-300 bg-amber-400/10'
+                            : sub.status === 'REJECTED'
+                            ? 'border-rose-500/30 text-rose-400 bg-rose-500/10'
+                            : 'border-sky-400/30 text-sky-400 bg-sky-400/10'
+                        }`}>
+                          {sub.status}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-[#8b8899] font-mono mt-0.5">
+                        By {sub.submitter?.name} {sub.submitter?.githubUsername ? `(@${sub.submitter.githubUsername})` : ''} · {new Date(sub.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+
+                    {sub.proofUrl && (
+                      <a
+                        href={sub.proofUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3 py-1 rounded-full text-[10px] font-mono font-bold text-[#bfa5ff] bg-[#161322] border border-[rgba(191,165,255,0.2)] flex items-center space-x-1 hover:border-[#bfa5ff] transition"
+                      >
+                        <span>Proof URL</span>
+                        <ExternalLink className="w-2.5 h-2.5" />
+                      </a>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-[#c5c3d0] leading-relaxed font-sans">{sub.description}</p>
+
+                  {/* Review Actions for Bounty Creator or Organizer */}
+                  {(currentUser?.id === selectedBountyForDetails.creatorId || ['ORGANIZER', 'ADMIN'].includes(currentUser?.role)) && sub.status === 'PENDING' && (
+                    <div className="pt-2 border-t border-[rgba(255,255,255,0.04)] flex items-center gap-2">
+                      <button
+                        onClick={() => handleReviewBountySubmission(selectedBountyForDetails.id, sub.id, 'APPROVED')}
+                        className="pill-cta flex-1 py-2 text-xs font-bold uppercase tracking-wider text-center"
+                      >
+                        🏆 APPROVE & AWARD (+100 PTS)
+                      </button>
+                      <button
+                        onClick={() => handleReviewBountySubmission(selectedBountyForDetails.id, sub.id, 'REJECTED')}
+                        className="px-4 py-2 rounded-full text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 transition"
+                      >
+                        REJECT
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {bountySubmissionsList.length === 0 && (
+                <div className="text-center py-12 text-[#8b8899] text-xs">
+                  Zero solutions submitted yet for this bounty.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Create Bounty Modal */}
+      {showCreateBountyModal && (
+        <div className="fixed inset-0 z-50 bg-[#070609]/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="ambient-card p-8 rounded-3xl max-w-lg w-full space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-[rgba(255,255,255,0.06)] pb-4">
+              <div>
+                <span className="hud-mono-label text-[#bfa5ff]">CHALLENGE SPONSORSHIP</span>
+                <h3 className="text-base font-bold text-[#f5f4f8] mt-1 uppercase">PUBLISH BOUNTY CHALLENGE</h3>
+              </div>
+              <button
+                onClick={() => setShowCreateBountyModal(false)}
+                className="p-1 rounded-full text-[#8b8899] hover:text-white hover:bg-[#1e1a2c]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateBounty} className="space-y-4">
+              <div>
+                <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Bounty Title</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Optimize ZK Prover Pipeline for Sub-50ms Latency"
+                  value={newBountyTitle}
+                  onChange={(e) => setNewBountyTitle(e.target.value)}
+                  className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Reward Amount</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. $2,500 USDC"
+                    value={newBountyReward}
+                    onChange={(e) => setNewBountyReward(e.target.value)}
+                    className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-3 py-2 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Category</label>
+                  <select
+                    value={newBountyCategory}
+                    onChange={(e) => setNewBountyCategory(e.target.value)}
+                    className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-3 py-2 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                  >
+                    <option value="PERFORMANCE">PERFORMANCE</option>
+                    <option value="SECURITY">SECURITY</option>
+                    <option value="AI">AI / ML</option>
+                    <option value="INFRASTRUCTURE">INFRASTRUCTURE</option>
+                    <option value="FEATURE">FEATURE</option>
+                    <option value="DESIGN">DESIGN</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Sponsor Name (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. ZK Labs"
+                    value={newBountySponsor}
+                    onChange={(e) => setNewBountySponsor(e.target.value)}
+                    className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-3 py-2 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Deadline (Optional)</label>
+                  <input
+                    type="datetime-local"
+                    value={newBountyDeadline}
+                    onChange={(e) => setNewBountyDeadline(e.target.value)}
+                    className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-3 py-2 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Description & Objectives</label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Describe the challenge scope and success criteria..."
+                  value={newBountyDesc}
+                  onChange={(e) => setNewBountyDesc(e.target.value)}
+                  className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0] resize-none font-sans"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Key Requirements / Benchmark (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Must pass all 100 test vectors under 50ms"
+                  value={newBountyReqs}
+                  onChange={(e) => setNewBountyReqs(e.target.value)}
+                  className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="pill-cta w-full py-3 text-xs font-bold tracking-wider uppercase"
+              >
+                PUBLISH BOUNTY CHALLENGE
               </button>
             </form>
           </div>

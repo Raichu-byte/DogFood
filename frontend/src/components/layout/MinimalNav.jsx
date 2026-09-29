@@ -20,6 +20,7 @@ export default function MinimalNav({
   const navTabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'gallery', label: 'Projects' },
+    { id: 'bounties', label: 'Bounties' },
     { id: 'leaderboard', label: 'Leaderboard' },
     { id: 'announcements', label: 'Broadcasts' },
     { id: 'hackers', label: 'Builders' },

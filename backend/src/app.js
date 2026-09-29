@@ -20,6 +20,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const activityRoutes = require('./routes/activityRoutes');
 const reputationRoutes = require('./routes/reputationRoutes');
 const mentorRoutes = require('./routes/mentorRoutes');
+const bountyRoutes = require('./routes/bountyRoutes');
 const { uploadDir } = require('./utils/upload');
 
 const app = express();
@@ -58,6 +59,7 @@ app.use('/api', realtimeRoutes);
 app.use('/api', matchmakingRoutes);
 app.use('/api', reputationRoutes);
 app.use('/api', mentorRoutes);
+app.use('/api', bountyRoutes);
 
 // Serve frontend static files in production if dist exists
 const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');

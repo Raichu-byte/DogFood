@@ -82,6 +82,8 @@ model User {
   claimedTickets      SupportTicket[]   @relation("ClaimedTickets")
   officeHourSlots     OfficeHourSlot[]  @relation("MentorOfficeHours")
   bookedOfficeHours   OfficeHourSlot[]  @relation("BookedOfficeHours")
+  createdBounties     Bounty[]          @relation("CreatedBounties")
+  bountySubmissions   BountySubmission[] @relation("UserBountySubmissions")
 
   @@map("users")
 }
@@ -111,6 +113,7 @@ model Event {
   announcements      Announcement[]
   supportTickets     SupportTicket[]
   officeHourSlots    OfficeHourSlot[]
+  bounties           Bounty[]
 
   @@map("events")
 }
@@ -162,6 +165,7 @@ model Team {
   submission          Submission?
   joinRequests        JoinRequest[]
   supportTickets      SupportTicket[]
+  bountySubmissions   BountySubmission[]
 
   @@unique([eventId, name])
   @@map("teams")
@@ -527,6 +531,58 @@ model OfficeHourSlot {
   @@index([status])
   @@map("office_hour_slots")
 }
+
+model Bounty {
+  id                  String             @id @default(cuid())
+  eventId             String
+  event               Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  creatorId           String
+  creator             User               @relation("CreatedBounties", fields: [creatorId], references: [id], onDelete: Cascade)
+  title               String
+  description         String
+  rewardAmount        String             // e.g. "$1,500 USDC" or "500 DOGFOOD"
+  category            String             @default("FEATURE") // "FEATURE", "BUG_HUNT", "INTEGRATION", "DESIGN", "DOCS"
+  sponsorName         String?
+  sponsorLogo         String?
+  requirements        String?            // JSON or text requirements
+  status              String             @default("OPEN") // "OPEN", "IN_REVIEW", "AWARDED", "CLOSED"
+  deadline            DateTime?
+  winnerSubmissionId  String?
+  winnerSubmission    BountySubmission?  @relation("WonBounty", fields: [winnerSubmissionId], references: [id], onDelete: SetNull)
+  submissions         BountySubmission[] @relation("BountySubmissions")
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  @@index([eventId])
+  @@index([creatorId])
+  @@index([status])
+  @@map("bounties")
+}
+
+model BountySubmission {
+  id          String    @id @default(cuid())
+  bountyId    String
+  bounty      Bounty    @relation("BountySubmissions", fields: [bountyId], references: [id], onDelete: Cascade)
+  submitterId String
+  submitter   User      @relation("UserBountySubmissions", fields: [submitterId], references: [id], onDelete: Cascade)
+  teamId      String?
+  team        Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  title       String
+  description String
+  proofUrl    String    // PR link, commit, or demo URL
+  status      String    @default("PENDING") // "PENDING", "APPROVED", "REJECTED"
+  feedback    String?
+  wonBounties Bounty[]  @relation("WonBounty")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([bountyId, submitterId])
+  @@index([bountyId])
+  @@index([submitterId])
+  @@index([status])
+  @@map("bounty_submissions")
+}
+
 
 
 
