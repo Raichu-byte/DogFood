@@ -20,6 +20,22 @@ function sanitizeHacker(user) {
     rolesSeeking = typeof user.rolesSeeking === 'string' ? user.rolesSeeking.split(',').map(r => r.trim()) : [];
   }
 
+  const reputationScore = user.reputationScore || 0;
+  let level = 1;
+  let rankTitle = 'Scout';
+  if (reputationScore >= 600) { level = 5; rankTitle = 'Grandmaster'; }
+  else if (reputationScore >= 300) { level = 4; rankTitle = 'Architect'; }
+  else if (reputationScore >= 150) { level = 3; rankTitle = 'Pioneer'; }
+  else if (reputationScore >= 50) { level = 2; rankTitle = 'Builder'; }
+
+  const badges = (user.userBadges || []).map(ub => ({
+    id: ub.badge?.id,
+    slug: ub.badge?.slug,
+    name: ub.badge?.name,
+    icon: ub.badge?.icon,
+    tier: ub.badge?.tier,
+  }));
+
   return {
     id: user.id,
     name: user.name,
@@ -30,6 +46,10 @@ function sanitizeHacker(user) {
     skills: Array.isArray(skills) ? skills : [],
     lookingForTeam: Boolean(user.lookingForTeam),
     rolesSeeking: Array.isArray(rolesSeeking) ? rolesSeeking : [],
+    reputationScore,
+    level,
+    rankTitle,
+    badges,
     createdAt: user.createdAt,
   };
 }
@@ -101,6 +121,13 @@ async function getHackers(req, res) {
 
     const users = await prisma.user.findMany({
       where,
+      include: {
+        userBadges: {
+          include: {
+            badge: true
+          }
+        }
+      },
       orderBy: { createdAt: 'desc' },
       take: 100,
     });

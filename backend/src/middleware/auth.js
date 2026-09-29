@@ -66,7 +66,33 @@ function optionalAuth(req, res, next) {
   next();
 }
 
+/**
+ * Role-Based Access Control Middleware
+ * Enforces user role matches one of allowed roles
+ */
+function requireRole(allowedRoles) {
+  const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        error: 'Authentication required.',
+        code: 'AUTH_REQUIRED'
+      });
+    }
+
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        error: `Forbidden. Requires one of roles: ${roles.join(', ')}`,
+        code: 'FORBIDDEN_ROLE'
+      });
+    }
+
+    next();
+  };
+}
+
 module.exports = {
   requireAuth,
   optionalAuth,
+  requireRole,
 };

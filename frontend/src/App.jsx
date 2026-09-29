@@ -75,6 +75,11 @@ export default function App() {
   const [applyMessage, setApplyMessage] = useState('');
   const [selectedTeamForApply, setSelectedTeamForApply] = useState(null);
 
+  // Reputation & Skill Endorsements (Phase 21)
+  const [endorseModalUser, setEndorseModalUser] = useState(null);
+  const [endorseSkill, setEndorseSkill] = useState('');
+  const [endorseComment, setEndorseComment] = useState('');
+
   // In-App Notification Center & Activity Feed state (Phase 19)
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -510,6 +515,43 @@ export default function App() {
         }
       })
       .catch(() => showToast('Network error applying to team.'));
+  };
+
+  const handleEndorseUser = (e) => {
+    if (e) e.preventDefault();
+    if (!token) {
+      setShowAuthModal(true);
+      return;
+    }
+    if (!endorseModalUser || !endorseSkill.trim()) {
+      showToast('⚠️ Please specify a skill to endorse.');
+      return;
+    }
+
+    fetch(`/api/users/${endorseModalUser.id}/endorse`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        skill: endorseSkill.trim(),
+        comment: endorseComment.trim() || undefined
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.endorsement) {
+          showToast(`✨ Endorsed ${endorseModalUser.name} for ${endorseSkill.trim()}! (+${data.pointsAwarded} pts)`);
+          setEndorseModalUser(null);
+          setEndorseSkill('');
+          setEndorseComment('');
+          fetchHackers();
+        } else {
+          showToast(`⚠️ ${data.error || 'Failed to endorse user.'}`);
+        }
+      })
+      .catch(() => showToast('Network error submitting endorsement.'));
   };
 
   const openProjectComments = (project) => {
@@ -1548,17 +1590,54 @@ export default function App() {
                     <div key={hacker.id} className="ambient-card p-5 sm:p-6 rounded-3xl space-y-3">
                       <div className="flex items-start justify-between">
                         <div>
-                          <p className="font-bold text-sm text-[#f5f4f8]">{hacker.name}</p>
-                          {hacker.githubUsername && (
-                            <p className="text-[10px] text-[#8b8899]">@{hacker.githubUsername}</p>
-                          )}
+                          <div className="flex items-center space-x-2">
+                            <p className="font-bold text-sm text-[#f5f4f8]">{hacker.name}</p>
+                            <span className="px-2 py-0.5 text-[8px] font-mono font-bold bg-[#7a4ee0]/15 text-[#bfa5ff] border border-[#7a4ee0]/40 rounded-full">
+                              LVL {hacker.level || 1} // {hacker.rankTitle || 'Scout'}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2 mt-0.5">
+                            {hacker.githubUsername && (
+                              <p className="text-[10px] text-[#8b8899]">@{hacker.githubUsername}</p>
+                            )}
+                            <span className="text-[10px] font-mono text-[#9eea9a] font-semibold">
+                              ✦ {hacker.reputationScore || 0} pts
+                            </span>
+                          </div>
                         </div>
-                        <span className="px-2.5 py-0.5 text-[9px] font-mono text-[#9eea9a] border border-[#9eea9a]/30 bg-[#9eea9a]/10 rounded-full uppercase font-semibold">
-                          LOOKING FOR TEAM
-                        </span>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => {
+                              setEndorseModalUser(hacker);
+                              setEndorseSkill(hacker.skills?.[0] || '');
+                            }}
+                            className="px-2.5 py-1 text-[9px] font-bold font-mono text-[#bfa5ff] bg-[#161322] hover:bg-[#201a35] border border-[rgba(191,165,255,0.3)] rounded-full transition"
+                          >
+                            + ENDORSE
+                          </button>
+                          <span className="px-2.5 py-0.5 text-[9px] font-mono text-[#9eea9a] border border-[#9eea9a]/30 bg-[#9eea9a]/10 rounded-full uppercase font-semibold">
+                            LOOKING FOR TEAM
+                          </span>
+                        </div>
                       </div>
 
                       {hacker.bio && <p className="text-xs text-[#c5c3d0] leading-relaxed font-sans">{hacker.bio}</p>}
+
+                      {/* Earned Badges */}
+                      {hacker.badges && hacker.badges.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-0.5">
+                          {hacker.badges.map((b, bIdx) => (
+                            <span
+                              key={bIdx}
+                              className="px-2 py-0.5 text-[8px] font-mono text-amber-300 border border-amber-400/30 bg-amber-400/10 rounded-md flex items-center space-x-1"
+                              title={b.name}
+                            >
+                              <span>🏆</span>
+                              <span>{b.name}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
 
                       {/* Skills */}
                       <div className="flex flex-wrap gap-1.5 pt-1">
@@ -2090,6 +2169,88 @@ export default function App() {
                 className="pill-cta w-full py-3 text-xs font-bold tracking-wider uppercase"
               >
                 SIGN IN
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Peer Skill Endorsement Modal (Phase 21) */}
+      {endorseModalUser && (
+        <div className="fixed inset-0 z-50 bg-[#070609]/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="ambient-card p-8 rounded-3xl max-w-md w-full space-y-6 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-[rgba(255,255,255,0.06)] pb-4">
+              <div>
+                <span className="hud-mono-label text-[#bfa5ff]">TRUST GRAPH & REPUTATION</span>
+                <h3 className="text-base font-bold text-[#f5f4f8] tracking-tight">
+                  ENDORSE {endorseModalUser.name.toUpperCase()}
+                </h3>
+              </div>
+              <button
+                onClick={() => setEndorseModalUser(null)}
+                className="p-1 rounded-full text-[#8b8899] hover:text-white hover:bg-[#1e1a2c]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEndorseUser} className="space-y-4">
+              <div>
+                <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Skill or Competency</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. React, Rust, Distributed Systems"
+                  value={endorseSkill}
+                  onChange={(e) => setEndorseSkill(e.target.value)}
+                  className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                />
+              </div>
+
+              {/* Quick skill select suggestions from hacker's profile */}
+              {endorseModalUser.skills && endorseModalUser.skills.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] text-[#8b8899] font-mono">Suggested from builder profile:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {endorseModalUser.skills.map((s, idx) => (
+                      <button
+                        type="button"
+                        key={idx}
+                        onClick={() => setEndorseSkill(s)}
+                        className={`px-2.5 py-0.5 text-[9px] font-mono rounded-full border transition ${
+                          endorseSkill === s
+                            ? 'border-[#7a4ee0] bg-[#7a4ee0]/20 text-[#bfa5ff]'
+                            : 'border-[rgba(255,255,255,0.08)] text-[#8b8899] hover:text-[#f5f4f8]'
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Endorsement Rationale (Optional)</label>
+                <textarea
+                  rows={2}
+                  placeholder="Explain why you vouch for this builder's technical execution..."
+                  value={endorseComment}
+                  onChange={(e) => setEndorseComment(e.target.value)}
+                  className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0] resize-none font-sans"
+                />
+              </div>
+
+              <div className="p-3 rounded-2xl bg-[#13111b] border border-[rgba(191,165,255,0.15)] flex items-center space-x-2 text-[10px] font-mono text-[#bfa5ff]">
+                <ShieldCheck className="w-4 h-4 text-[#9eea9a] flex-shrink-0" />
+                <span>Awards +15 reputation points to recipient. Irreversible on-chain record.</span>
+              </div>
+
+              <button
+                type="submit"
+                className="pill-cta w-full py-3 text-xs font-bold tracking-wider uppercase"
+              >
+                CONFIRM ENDORSEMENT (+15 PTS)
               </button>
             </form>
           </div>
