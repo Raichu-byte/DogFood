@@ -15,10 +15,19 @@ describe('Submissions & Deadlines API Tests (Phase 7)', () => {
   let createdSubmissionId;
 
   beforeAll(async () => {
-    // 1. Fetch active event and track
+    // 1. Fetch and reset active event and track
     const event = await prisma.event.findFirst({
       where: { slug: 'dogfood-2026' },
       include: { tracks: true },
+    });
+    await prisma.event.update({
+      where: { id: event.id },
+      data: {
+        status: 'ACTIVE',
+        submissionDeadline: new Date(Date.now() + 7 * 86400000),
+        judgingDeadline: new Date(Date.now() + 14 * 86400000),
+        votingDeadline: new Date(Date.now() + 21 * 86400000),
+      }
     });
     eventId = event.id;
     trackId = event.tracks[0].id;

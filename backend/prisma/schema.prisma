@@ -11,6 +11,7 @@ enum Role {
   VISITOR
   PARTICIPANT
   JUDGE
+  MENTOR
   ORGANIZER
   ADMIN
 }
@@ -76,6 +77,11 @@ model User {
   sentEndorsements    Endorsement[]     @relation("SentEndorsements")
   receivedEndorsements Endorsement[]    @relation("ReceivedEndorsements")
   reputationLogs      ReputationLog[]
+  mentorProfile       MentorProfile?
+  createdTickets      SupportTicket[]   @relation("CreatedTickets")
+  claimedTickets      SupportTicket[]   @relation("ClaimedTickets")
+  officeHourSlots     OfficeHourSlot[]  @relation("MentorOfficeHours")
+  bookedOfficeHours   OfficeHourSlot[]  @relation("BookedOfficeHours")
 
   @@map("users")
 }
@@ -103,6 +109,8 @@ model Event {
   communityVotes     CommunityVote[]
   auditLogs          AuditLog[]
   announcements      Announcement[]
+  supportTickets     SupportTicket[]
+  officeHourSlots    OfficeHourSlot[]
 
   @@map("events")
 }
@@ -153,6 +161,7 @@ model Team {
   members             TeamMember[]
   submission          Submission?
   joinRequests        JoinRequest[]
+  supportTickets      SupportTicket[]
 
   @@unique([eventId, name])
   @@map("teams")
@@ -450,6 +459,75 @@ model ReputationLog {
   @@index([action])
   @@map("reputation_logs")
 }
+
+model MentorProfile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expertise           String   // Stored as JSON array string: ["Rust", "AI", "Distributed Systems"]
+  bio                 String?
+  company             String?
+  status              String   @default("AVAILABLE") // "AVAILABLE", "BUSY", "OFFLINE"
+  location            String?  // e.g. "Mentor Table 3" or "Discord #mentor-channel"
+  maxConcurrentTickets Int     @default(3)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("mentor_profiles")
+}
+
+model SupportTicket {
+  id               String    @id @default(cuid())
+  eventId          String
+  event            Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  teamId           String?
+  team             Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  creatorId        String
+  creator          User      @relation("CreatedTickets", fields: [creatorId], references: [id], onDelete: Cascade)
+  mentorId         String?
+  mentor           User?     @relation("ClaimedTickets", fields: [mentorId], references: [id], onDelete: SetNull)
+  title            String
+  description      String
+  category         String    @default("DEBUGGING") // "DEBUGGING", "ARCHITECTURE", "API_HELP", "PITCH_PREP", "GENERAL"
+  priority         String    @default("NORMAL")    // "LOW", "NORMAL", "HIGH", "URGENT"
+  status           String    @default("OPEN")      // "OPEN", "CLAIMED", "IN_PROGRESS", "RESOLVED", "CANCELLED"
+  location         String?   // e.g. "Table 12"
+  resolutionNotes  String?
+  claimedAt        DateTime?
+  resolvedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([eventId])
+  @@index([creatorId])
+  @@index([mentorId])
+  @@index([status])
+  @@map("support_tickets")
+}
+
+model OfficeHourSlot {
+  id          String   @id @default(cuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  mentorId    String
+  mentor      User     @relation("MentorOfficeHours", fields: [mentorId], references: [id], onDelete: Cascade)
+  bookedById  String?
+  bookedBy    User?    @relation("BookedOfficeHours", fields: [bookedById], references: [id], onDelete: SetNull)
+  topic       String
+  startTime   DateTime
+  endTime     DateTime
+  location    String?
+  status      String   @default("OPEN") // "OPEN", "BOOKED", "COMPLETED", "CANCELLED"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([eventId])
+  @@index([mentorId])
+  @@index([bookedById])
+  @@index([status])
+  @@map("office_hour_slots")
+}
+
 
 
 

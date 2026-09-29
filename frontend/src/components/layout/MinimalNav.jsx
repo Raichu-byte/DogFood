@@ -23,6 +23,7 @@ export default function MinimalNav({
     { id: 'leaderboard', label: 'Leaderboard' },
     { id: 'announcements', label: 'Broadcasts' },
     { id: 'hackers', label: 'Builders' },
+    { id: 'mentors', label: 'Mentors' },
     { id: 'activity', label: 'Feed' },
     { id: 'judging', label: 'Judging' },
   ];

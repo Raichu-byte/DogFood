@@ -11,8 +11,17 @@ describe('Teams API Tests (Phase 6)', () => {
   let createdInviteCode;
 
   beforeAll(async () => {
-    // 1. Fetch active event
+    // 1. Fetch and reset active event status
     const event = await prisma.event.findFirst({ where: { slug: 'dogfood-2026' } });
+    await prisma.event.update({
+      where: { id: event.id },
+      data: {
+        status: 'ACTIVE',
+        submissionDeadline: new Date(Date.now() + 7 * 86400000),
+        judgingDeadline: new Date(Date.now() + 14 * 86400000),
+        votingDeadline: new Date(Date.now() + 21 * 86400000),
+      }
+    });
     eventId = event.id;
 
     // 2. Register three fresh test participants

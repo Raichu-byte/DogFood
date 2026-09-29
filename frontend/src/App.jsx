@@ -30,13 +30,18 @@ import {
   Radio,
   Activity,
   CheckCheck,
+  LifeBuoy,
+  Calendar,
+  Clock,
+  Compass,
+  HelpCircle,
   X
 } from 'lucide-react';
 import ReferenceHero from './components/ReferenceHero';
 import MinimalNav from './components/layout/MinimalNav';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'gallery', 'leaderboard', 'announcements', 'hackers', 'judging'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'gallery', 'leaderboard', 'announcements', 'hackers', 'mentors', 'activity', 'judging'
   const [health, setHealth] = useState(null);
   const [eventData, setEventData] = useState(null);
   const [gallery, setGallery] = useState([]);
@@ -79,6 +84,24 @@ export default function App() {
   const [endorseModalUser, setEndorseModalUser] = useState(null);
   const [endorseSkill, setEndorseSkill] = useState('');
   const [endorseComment, setEndorseComment] = useState('');
+
+  // Mentor Matching & Support Queue (Phase 22)
+  const [mentors, setMentors] = useState([]);
+  const [mentorSkillFilter, setMentorSkillFilter] = useState('');
+  const [supportTickets, setSupportTickets] = useState([]);
+  const [officeHourSlots, setOfficeHourSlots] = useState([]);
+  const [ticketStatusFilter, setTicketStatusFilter] = useState('ALL');
+  const [showNewTicketModal, setShowNewTicketModal] = useState(false);
+  const [showNewSlotModal, setShowNewSlotModal] = useState(false);
+  const [ticketTitle, setTicketTitle] = useState('');
+  const [ticketDesc, setTicketDesc] = useState('');
+  const [ticketCategory, setTicketCategory] = useState('DEBUGGING');
+  const [ticketPriority, setTicketPriority] = useState('NORMAL');
+  const [ticketLocation, setTicketLocation] = useState('');
+  const [slotTopic, setSlotTopic] = useState('');
+  const [slotStart, setSlotStart] = useState('');
+  const [slotEnd, setSlotEnd] = useState('');
+  const [slotLocation, setSlotLocation] = useState('');
 
   // In-App Notification Center & Activity Feed state (Phase 19)
   const [notifications, setNotifications] = useState([]);
@@ -149,9 +172,14 @@ export default function App() {
       fetchHackers();
       fetchRecruitingTeams();
     }
+    if (activeTab === 'mentors') {
+      fetchMentors();
+      fetchSupportTickets();
+      fetchOfficeHours();
+    }
     if (activeTab === 'judging') fetchJudgingQueue();
     if (activeTab === 'overview') fetchWinners();
-  }, [activeTab, leaderboardMode, selectedTrack, searchQuery, hackerSkillFilter, token]);
+  }, [activeTab, leaderboardMode, selectedTrack, searchQuery, hackerSkillFilter, mentorSkillFilter, ticketStatusFilter, token]);
 
   // 4. Real-time In-App Notification Center SSE Stream
   useEffect(() => {
@@ -552,6 +580,186 @@ export default function App() {
         }
       })
       .catch(() => showToast('Network error submitting endorsement.'));
+  };
+
+  // Mentor Matching & Technical Support Queue API Handlers (Phase 22)
+  const fetchMentors = () => {
+    let url = '/api/mentors';
+    if (mentorSkillFilter) url += `?skill=${encodeURIComponent(mentorSkillFilter)}`;
+    fetch(url)
+      .then(res => res.json())
+      .then(data => setMentors(data.mentors || []))
+      .catch(console.error);
+  };
+
+  const fetchSupportTickets = () => {
+    let url = '/api/support/tickets';
+    if (ticketStatusFilter !== 'ALL') url += `?status=${ticketStatusFilter}`;
+    fetch(url)
+      .then(res => res.json())
+      .then(data => setSupportTickets(data.tickets || []))
+      .catch(console.error);
+  };
+
+  const fetchOfficeHours = () => {
+    fetch('/api/mentors/office-hours')
+      .then(res => res.json())
+      .then(data => setOfficeHourSlots(data.slots || []))
+      .catch(console.error);
+  };
+
+  const handleCreateTicket = (e) => {
+    if (e) e.preventDefault();
+    if (!token) {
+      setShowAuthModal(true);
+      return;
+    }
+    if (!ticketTitle.trim() || !ticketDesc.trim()) {
+      showToast('⚠️ Please provide a title and description for the ticket.');
+      return;
+    }
+
+    const eventId = eventData?.id || 'event-dogfood-2026';
+    fetch('/api/support/tickets', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        eventId,
+        title: ticketTitle.trim(),
+        description: ticketDesc.trim(),
+        category: ticketCategory,
+        priority: ticketPriority,
+        location: ticketLocation.trim() || undefined,
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.ticket) {
+          showToast('🎟️ Support ticket created! A mentor will be notified.');
+          setShowNewTicketModal(false);
+          setTicketTitle('');
+          setTicketDesc('');
+          setTicketLocation('');
+          fetchSupportTickets();
+        } else {
+          showToast(`⚠️ ${data.error || 'Failed to create ticket.'}`);
+        }
+      })
+      .catch(() => showToast('Network error creating support ticket.'));
+  };
+
+  const handleClaimTicket = (ticketId) => {
+    if (!token) {
+      setShowAuthModal(true);
+      return;
+    }
+    fetch(`/api/support/tickets/${ticketId}/claim`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.ticket) {
+          showToast('✅ Ticket claimed! You are assigned as mentor.');
+          fetchSupportTickets();
+        } else {
+          showToast(`⚠️ ${data.error || 'Failed to claim ticket.'}`);
+        }
+      })
+      .catch(() => showToast('Network error claiming ticket.'));
+  };
+
+  const handleResolveTicket = (ticketId) => {
+    if (!token) return;
+    const notes = prompt('Enter resolution notes (optional):');
+    fetch(`/api/support/tickets/${ticketId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        status: 'RESOLVED',
+        resolutionNotes: notes || 'Resolved with builder.'
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.ticket) {
+          showToast('🎉 Ticket marked as resolved! (+25 reputation pts)');
+          fetchSupportTickets();
+        } else {
+          showToast(`⚠️ ${data.error || 'Failed to resolve ticket.'}`);
+        }
+      })
+      .catch(() => showToast('Network error updating ticket status.'));
+  };
+
+  const handleBookSlot = (slotId) => {
+    if (!token) {
+      setShowAuthModal(true);
+      return;
+    }
+    fetch(`/api/mentors/office-hours/${slotId}/book`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.slot) {
+          showToast('📅 Office hour slot booked successfully!');
+          fetchOfficeHours();
+        } else {
+          showToast(`⚠️ ${data.error || 'Failed to book slot.'}`);
+        }
+      })
+      .catch(() => showToast('Network error booking office hour slot.'));
+  };
+
+  const handleCreateSlot = (e) => {
+    if (e) e.preventDefault();
+    if (!token) {
+      setShowAuthModal(true);
+      return;
+    }
+    if (!slotTopic.trim() || !slotStart || !slotEnd) {
+      showToast('⚠️ Please specify topic, start time, and end time.');
+      return;
+    }
+
+    const eventId = eventData?.id || 'event-dogfood-2026';
+    fetch('/api/mentors/office-hours', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        eventId,
+        topic: slotTopic.trim(),
+        startTime: new Date(slotStart).toISOString(),
+        endTime: new Date(slotEnd).toISOString(),
+        location: slotLocation.trim() || undefined,
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.slot) {
+          showToast('📅 Office hour slot opened!');
+          setShowNewSlotModal(false);
+          setSlotTopic('');
+          setSlotStart('');
+          setSlotEnd('');
+          setSlotLocation('');
+          fetchOfficeHours();
+        } else {
+          showToast(`⚠️ ${data.error || 'Failed to open office hour slot.'}`);
+        }
+      })
+      .catch(() => showToast('Network error creating office hour slot.'));
   };
 
   const openProjectComments = (project) => {
@@ -1694,6 +1902,260 @@ export default function App() {
         )}
 
         {/* ============================================================ */}
+        {/* TAB: MENTOR MATCHING & TECHNICAL SUPPORT QUEUE (Phase 22) */}
+        {/* ============================================================ */}
+        {activeTab === 'mentors' && (
+          <div className="space-y-10">
+            {/* Header & Quick Action Buttons */}
+            <div className="border-b border-[rgba(255,255,255,0.06)] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold tracking-tight text-[#f5f4f8] uppercase flex items-center space-x-2">
+                  <LifeBuoy className="w-5 h-5 text-[#bfa5ff]" />
+                  <span>MENTOR NETWORK & TECHNICAL HELP DESK</span>
+                </h2>
+                <p className="text-xs text-[#c5c3d0] mt-1 font-sans">
+                  Connect with verified domain experts, submit debugging tickets, and book 1-on-1 architecture office hours.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() => {
+                    if (!token) setShowAuthModal(true);
+                    else setShowNewTicketModal(true);
+                  }}
+                  className="pill-cta px-5 py-2.5 text-xs flex items-center space-x-2"
+                >
+                  <HelpCircle className="w-3.5 h-3.5" />
+                  <span>REQUEST HELP TICKET</span>
+                </button>
+
+                {(currentUser?.role === 'JUDGE' || currentUser?.role === 'ORGANIZER' || currentUser?.role === 'ADMIN' || currentUser?.role === 'MENTOR') && (
+                  <button
+                    onClick={() => setShowNewSlotModal(true)}
+                    className="px-4 py-2.5 rounded-full text-xs font-semibold text-[#bfa5ff] bg-[#161322] hover:bg-[#201a35] border border-[rgba(191,165,255,0.25)] flex items-center space-x-1.5 transition"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>+ OPEN OFFICE HOURS</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Grid: Left column = Mentors & Office Hours; Right column = Live Support Queue */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              
+              {/* Left 7 Columns: Verified Mentors Directory & Office Hours */}
+              <div className="lg:col-span-7 space-y-8">
+                
+                {/* Mentors Directory */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-sm font-bold text-[#f5f4f8] tracking-wider uppercase flex items-center space-x-2">
+                      <Compass className="w-4 h-4 text-[#9eea9a]" />
+                      <span>VERIFIED MENTORS ({mentors.length})</span>
+                    </h3>
+
+                    <div className="flex items-center bg-[#0c0b12] border border-[rgba(255,255,255,0.08)] rounded-full px-3 py-1.5 text-xs">
+                      <Search className="w-3 h-3 text-[#8b8899] mr-2" />
+                      <input
+                        type="text"
+                        placeholder="Filter by skill (e.g. Rust)..."
+                        value={mentorSkillFilter}
+                        onChange={(e) => setMentorSkillFilter(e.target.value)}
+                        className="bg-transparent text-xs text-[#f5f4f8] outline-none placeholder-neutral-600 w-36"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {mentors.map((m) => (
+                      <div key={m.id} className="ambient-card p-5 rounded-3xl space-y-3 flex flex-col justify-between">
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <p className="font-bold text-sm text-[#f5f4f8]">{m.name}</p>
+                              {m.company && (
+                                <p className="text-[10px] text-[#bfa5ff] font-medium">{m.company}</p>
+                              )}
+                            </div>
+                            <span className={`px-2 py-0.5 text-[8px] font-mono rounded-full border font-bold uppercase ${
+                              m.status === 'AVAILABLE'
+                                ? 'border-[#9eea9a]/30 text-[#9eea9a] bg-[#9eea9a]/10'
+                                : 'border-amber-400/30 text-amber-400 bg-amber-400/10'
+                            }`}>
+                              {m.status}
+                            </span>
+                          </div>
+
+                          {m.bio && <p className="text-xs text-[#c5c3d0] leading-relaxed line-clamp-2">{m.bio}</p>}
+
+                          {m.location && (
+                            <p className="text-[10px] font-mono text-[#8b8899]">📍 {m.location}</p>
+                          )}
+                        </div>
+
+                        {/* Expertise tags */}
+                        <div className="flex flex-wrap gap-1.5 pt-2 border-t border-[rgba(255,255,255,0.04)]">
+                          {(m.expertise || []).map((exp, idx) => (
+                            <span key={idx} className="px-2 py-0.5 text-[8px] font-mono text-[#bfa5ff] bg-[#161322] border border-[rgba(191,165,255,0.18)] rounded-full">
+                              {exp}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+
+                    {mentors.length === 0 && (
+                      <div className="col-span-2 ambient-card p-8 text-center rounded-3xl text-xs text-[#8b8899]">
+                        Zero mentors found matching filter.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Office Hours Section */}
+                <div className="space-y-4 pt-4 border-t border-[rgba(255,255,255,0.06)]">
+                  <h3 className="text-sm font-bold text-[#f5f4f8] tracking-wider uppercase flex items-center space-x-2">
+                    <Clock className="w-4 h-4 text-[#bfa5ff]" />
+                    <span>OPEN OFFICE HOURS SLOTS ({officeHourSlots.length})</span>
+                  </h3>
+
+                  <div className="space-y-3">
+                    {officeHourSlots.map((slot) => (
+                      <div key={slot.id} className="ambient-card p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-bold text-xs text-[#f5f4f8]">{slot.topic}</span>
+                            <span className={`text-[8px] font-mono px-2 py-0.5 rounded-full border ${
+                              slot.status === 'OPEN'
+                                ? 'border-[#9eea9a]/30 text-[#9eea9a] bg-[#9eea9a]/10'
+                                : 'border-neutral-700 text-neutral-400 bg-neutral-900'
+                            }`}>
+                              {slot.status}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-[#8b8899] font-mono">
+                            Mentor: {slot.mentor?.name} // {new Date(slot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(slot.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+
+                        {slot.status === 'OPEN' && (
+                          <button
+                            onClick={() => handleBookSlot(slot.id)}
+                            className="pill-cta px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider self-start sm:self-auto"
+                          >
+                            BOOK SLOT
+                          </button>
+                        )}
+                        {slot.status === 'BOOKED' && slot.bookedBy && (
+                          <span className="text-[10px] font-mono text-[#8b8899]">Booked by {slot.bookedBy.name}</span>
+                        )}
+                      </div>
+                    ))}
+
+                    {officeHourSlots.length === 0 && (
+                      <div className="ambient-card p-6 text-center rounded-2xl text-xs text-[#8b8899]">
+                        Zero office hour slots scheduled at this time.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Right 5 Columns: Real-Time Technical Support Queue */}
+              <div className="lg:col-span-5 space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-bold text-[#f5f4f8] tracking-wider uppercase flex items-center space-x-2">
+                    <LifeBuoy className="w-4 h-4 text-amber-400" />
+                    <span>SUPPORT TICKETS QUEUE ({supportTickets.length})</span>
+                  </h3>
+
+                  <select
+                    value={ticketStatusFilter}
+                    onChange={(e) => setTicketStatusFilter(e.target.value)}
+                    className="bg-[#0c0b12] border border-[rgba(255,255,255,0.08)] rounded-full px-3 py-1 text-[10px] font-mono text-[#bfa5ff] outline-none"
+                  >
+                    <option value="ALL">ALL STATUS</option>
+                    <option value="OPEN">OPEN ONLY</option>
+                    <option value="CLAIMED">CLAIMED</option>
+                    <option value="RESOLVED">RESOLVED</option>
+                  </select>
+                </div>
+
+                <div className="space-y-3">
+                  {supportTickets.map((t) => (
+                    <div key={t.id} className="ambient-card p-5 rounded-2xl space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className={`text-[8px] font-mono px-2 py-0.5 rounded-full border uppercase font-bold ${
+                            t.priority === 'HIGH' || t.priority === 'URGENT'
+                              ? 'border-rose-500/30 text-rose-400 bg-rose-500/10'
+                              : 'border-amber-400/30 text-amber-400 bg-amber-400/10'
+                          }`}>
+                            {t.priority} // {t.category}
+                          </span>
+                          <h4 className="font-bold text-xs text-[#f5f4f8] mt-1.5">{t.title}</h4>
+                        </div>
+                        <span className={`text-[8px] font-mono px-2 py-0.5 rounded-full border uppercase ${
+                          t.status === 'OPEN'
+                            ? 'border-[#9eea9a]/30 text-[#9eea9a] bg-[#9eea9a]/10'
+                            : t.status === 'RESOLVED'
+                            ? 'border-neutral-600 text-neutral-400 bg-neutral-900'
+                            : 'border-sky-400/30 text-sky-400 bg-sky-400/10'
+                        }`}>
+                          {t.status}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-[#c5c3d0] leading-relaxed font-sans">{t.description}</p>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-[rgba(255,255,255,0.04)] text-[10px] font-mono text-[#8b8899]">
+                        <span>By {t.creator?.name} {t.location ? `(${t.location})` : ''}</span>
+                        {t.mentor && <span className="text-[#bfa5ff]">Assigned: {t.mentor.name}</span>}
+                      </div>
+
+                      {/* Mentor actions */}
+                      {t.status === 'OPEN' && (
+                        <button
+                          onClick={() => handleClaimTicket(t.id)}
+                          className="w-full py-2 text-xs font-bold font-mono tracking-wider text-[#9eea9a] bg-[#9eea9a]/10 hover:bg-[#9eea9a]/20 border border-[#9eea9a]/30 rounded-xl transition"
+                        >
+                          CLAIM TICKET AS MENTOR
+                        </button>
+                      )}
+
+                      {t.status === 'CLAIMED' && (currentUser?.id === t.mentorId || currentUser?.role === 'ORGANIZER') && (
+                        <button
+                          onClick={() => handleResolveTicket(t.id)}
+                          className="w-full py-2 text-xs font-bold font-mono tracking-wider text-[#bfa5ff] bg-[#7a4ee0]/20 hover:bg-[#7a4ee0]/30 border border-[#7a4ee0]/40 rounded-xl transition"
+                        >
+                          MARK RESOLVED (+25 PTS)
+                        </button>
+                      )}
+
+                      {t.resolutionNotes && (
+                        <p className="text-[10px] text-emerald-400/90 font-mono bg-emerald-950/20 p-2 rounded-lg border border-emerald-500/20">
+                          ✓ Notes: {t.resolutionNotes}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+
+                  {supportTickets.length === 0 && (
+                    <div className="ambient-card p-8 text-center rounded-2xl text-xs text-[#8b8899]">
+                      Zero tickets in queue. All systems nominal.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
         {/* TAB 6: JUDGING EVALUATION QUEUE */}
         {/* ============================================================ */}
         {activeTab === 'judging' && (
@@ -2251,6 +2713,181 @@ export default function App() {
                 className="pill-cta w-full py-3 text-xs font-bold tracking-wider uppercase"
               >
                 CONFIRM ENDORSEMENT (+15 PTS)
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* New Support Ticket Modal (Phase 22) */}
+      {showNewTicketModal && (
+        <div className="fixed inset-0 z-50 bg-[#070609]/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="ambient-card p-8 rounded-3xl max-w-lg w-full space-y-6 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-[rgba(255,255,255,0.06)] pb-4">
+              <div>
+                <span className="hud-mono-label text-[#bfa5ff]">TECHNICAL ASSISTANCE</span>
+                <h3 className="text-base font-bold text-[#f5f4f8] tracking-tight uppercase">
+                  SUBMIT HELP TICKET
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowNewTicketModal(false)}
+                className="p-1 rounded-full text-[#8b8899] hover:text-white hover:bg-[#1e1a2c]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateTicket} className="space-y-4">
+              <div>
+                <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Issue Title</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Wasm panic on memory allocate or CORS issue"
+                  value={ticketTitle}
+                  onChange={(e) => setTicketTitle(e.target.value)}
+                  className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Category</label>
+                  <select
+                    value={ticketCategory}
+                    onChange={(e) => setTicketCategory(e.target.value)}
+                    className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-3 py-2 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                  >
+                    <option value="DEBUGGING">DEBUGGING</option>
+                    <option value="ARCHITECTURE">ARCHITECTURE</option>
+                    <option value="API_HELP">API HELP</option>
+                    <option value="PITCH_PREP">PITCH PREP</option>
+                    <option value="GENERAL">GENERAL</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Priority</label>
+                  <select
+                    value={ticketPriority}
+                    onChange={(e) => setTicketPriority(e.target.value)}
+                    className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-3 py-2 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                  >
+                    <option value="LOW">LOW</option>
+                    <option value="NORMAL">NORMAL</option>
+                    <option value="HIGH">HIGH</option>
+                    <option value="URGENT">URGENT</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Description & Reproduction</label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Explain the technical blockage and steps to reproduce..."
+                  value={ticketDesc}
+                  onChange={(e) => setTicketDesc(e.target.value)}
+                  className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0] resize-none font-sans"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Physical Table / Contact Location (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Table 14 or Discord @handle"
+                  value={ticketLocation}
+                  onChange={(e) => setTicketLocation(e.target.value)}
+                  className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="pill-cta w-full py-3 text-xs font-bold tracking-wider uppercase"
+              >
+                SUBMIT TO MENTOR QUEUE
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* New Office Hour Slot Modal (Phase 22) */}
+      {showNewSlotModal && (
+        <div className="fixed inset-0 z-50 bg-[#070609]/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="ambient-card p-8 rounded-3xl max-w-md w-full space-y-6 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-[rgba(255,255,255,0.06)] pb-4">
+              <div>
+                <span className="hud-mono-label text-[#bfa5ff]">MENTOR SCHEDULE</span>
+                <h3 className="text-base font-bold text-[#f5f4f8] tracking-tight uppercase">
+                  OPEN OFFICE HOURS SLOT
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowNewSlotModal(false)}
+                className="p-1 rounded-full text-[#8b8899] hover:text-white hover:bg-[#1e1a2c]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSlot} className="space-y-4">
+              <div>
+                <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Topic / Domain</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. ZK Architecture & Smart Contracts Review"
+                  value={slotTopic}
+                  onChange={(e) => setSlotTopic(e.target.value)}
+                  className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Start Time</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={slotStart}
+                    onChange={(e) => setSlotStart(e.target.value)}
+                    className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-3 py-2 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">End Time</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={slotEnd}
+                    onChange={(e) => setSlotEnd(e.target.value)}
+                    className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-3 py-2 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Meeting Location / Link</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Mentor Booth A / Voice Room 2"
+                  value={slotLocation}
+                  onChange={(e) => setSlotLocation(e.target.value)}
+                  className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="pill-cta w-full py-3 text-xs font-bold tracking-wider uppercase"
+              >
+                PUBLISH OFFICE HOURS SLOT
               </button>
             </form>
           </div>
