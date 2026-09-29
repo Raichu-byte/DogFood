@@ -38,6 +38,7 @@ import {
   Target,
   Coins,
   Gift,
+  BarChart3,
   X
 } from 'lucide-react';
 import ReferenceHero from './components/ReferenceHero';
@@ -125,6 +126,18 @@ export default function App() {
   const [newBountyReqs, setNewBountyReqs] = useState('');
   const [newBountyDeadline, setNewBountyDeadline] = useState('');
 
+  // Real-Time Polling & Community Sentiment state (Phase 24)
+  const [polls, setPolls] = useState([]);
+  const [pollCategoryFilter, setPollCategoryFilter] = useState('ALL');
+  const [pollSearchQuery, setPollSearchQuery] = useState('');
+  const [showCreatePollModal, setShowCreatePollModal] = useState(false);
+  const [newPollQuestion, setNewPollQuestion] = useState('');
+  const [newPollDesc, setNewPollDesc] = useState('');
+  const [newPollCategory, setNewPollCategory] = useState('GENERAL');
+  const [newPollAllowMultiple, setNewPollAllowMultiple] = useState(false);
+  const [newPollOptions, setNewPollOptions] = useState('');
+  const [newPollClosesAt, setNewPollClosesAt] = useState('');
+
   // In-App Notification Center & Activity Feed state (Phase 19)
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -188,6 +201,7 @@ export default function App() {
   useEffect(() => {
     if (activeTab === 'gallery') fetchGallery();
     if (activeTab === 'bounties') fetchBounties();
+    if (activeTab === 'polls') fetchPolls();
     if (activeTab === 'leaderboard') fetchLeaderboard();
     if (activeTab === 'activity') fetchActivities();
     if (activeTab === 'announcements') fetchAnnouncements();
@@ -202,7 +216,7 @@ export default function App() {
     }
     if (activeTab === 'judging') fetchJudgingQueue();
     if (activeTab === 'overview') fetchWinners();
-  }, [activeTab, leaderboardMode, selectedTrack, searchQuery, hackerSkillFilter, mentorSkillFilter, ticketStatusFilter, bountyCategoryFilter, bountySearchQuery, token]);
+  }, [activeTab, leaderboardMode, selectedTrack, searchQuery, hackerSkillFilter, mentorSkillFilter, ticketStatusFilter, bountyCategoryFilter, bountySearchQuery, pollCategoryFilter, pollSearchQuery, token]);
 
   // 4. Real-time In-App Notification Center SSE Stream
   useEffect(() => {
@@ -919,6 +933,120 @@ export default function App() {
         }
       })
       .catch(() => showToast('Network error reviewing submission.'));
+  };
+
+  // Real-Time Polling & Sentiment Handlers (Phase 24)
+  const fetchPolls = () => {
+    let url = '/api/polls';
+    const params = [];
+    if (pollCategoryFilter !== 'ALL') params.push(`category=${encodeURIComponent(pollCategoryFilter)}`);
+    if (pollSearchQuery.trim()) params.push(`search=${encodeURIComponent(pollSearchQuery.trim())}`);
+    if (params.length > 0) url += `?${params.join('&')}`;
+
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    fetch(url, { headers })
+      .then(res => res.json())
+      .then(data => setPolls(data.polls || []))
+      .catch(console.error);
+  };
+
+  const handleVotePoll = (pollId, optionId) => {
+    if (!token) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    fetch(`/api/polls/${pollId}/vote`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ optionIds: optionId })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.poll) {
+          showToast(`🗳️ ${data.message || 'Vote recorded! (+5 reputation points)'}`);
+          fetchPolls();
+        } else {
+          showToast(`⚠️ ${data.error || 'Failed to record vote.'}`);
+        }
+      })
+      .catch(() => showToast('Network error casting vote.'));
+  };
+
+  const handleCreatePoll = (e) => {
+    if (e) e.preventDefault();
+    if (!token) {
+      setShowAuthModal(true);
+      return;
+    }
+    if (!newPollQuestion.trim() || !newPollOptions.trim()) {
+      showToast('⚠️ Please provide a question and at least 2 options.');
+      return;
+    }
+
+    const optionsList = newPollOptions
+      .split('\n')
+      .map(o => o.trim())
+      .filter(Boolean);
+
+    if (optionsList.length < 2) {
+      showToast('⚠️ Please provide at least 2 non-empty options (one per line).');
+      return;
+    }
+
+    const eventId = eventData?.id || 'event-dogfood-2026';
+    fetch('/api/polls', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        eventId,
+        question: newPollQuestion.trim(),
+        description: newPollDesc.trim() || undefined,
+        category: newPollCategory,
+        allowMultiple: newPollAllowMultiple,
+        options: optionsList,
+        closesAt: newPollClosesAt ? new Date(newPollClosesAt).toISOString() : undefined,
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.poll) {
+          showToast('📊 Community poll launched successfully!');
+          setShowCreatePollModal(false);
+          setNewPollQuestion('');
+          setNewPollDesc('');
+          setNewPollOptions('');
+          setNewPollClosesAt('');
+          fetchPolls();
+        } else {
+          showToast(`⚠️ ${data.error || 'Failed to create poll.'}`);
+        }
+      })
+      .catch(() => showToast('Network error creating poll.'));
+  };
+
+  const handleClosePoll = (pollId) => {
+    if (!token) return;
+    fetch(`/api/polls/${pollId}/close`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.poll) {
+          showToast('🔒 Poll closed.');
+          fetchPolls();
+        } else {
+          showToast(`⚠️ ${data.error || 'Failed to close poll.'}`);
+        }
+      })
+      .catch(() => showToast('Network error closing poll.'));
   };
 
   const openProjectComments = (project) => {
@@ -1686,6 +1814,198 @@ export default function App() {
               <div className="ambient-card p-12 text-center rounded-3xl text-xs text-[#8b8899] space-y-2">
                 <Target className="w-8 h-8 text-[#bfa5ff] mx-auto opacity-50" />
                 <p>Zero bounties found in this category.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* TAB: REAL-TIME POLLING & COMMUNITY SENTIMENT (Phase 24) */}
+        {/* ============================================================ */}
+        {activeTab === 'polls' && (
+          <div className="space-y-8">
+            {/* Header & Controls */}
+            <div className="border-b border-[rgba(255,255,255,0.06)] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold tracking-tight text-[#f5f4f8] uppercase flex items-center space-x-2">
+                  <BarChart3 className="w-5 h-5 text-[#bfa5ff]" />
+                  <span>COMMUNITY PULSE & REAL-TIME SENTIMENT</span>
+                </h2>
+                <p className="text-xs text-[#c5c3d0] mt-1 font-sans">
+                  Cast votes on technical proposals, architectural standards, and event sentiment in real time.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center bg-[#0c0b12] border border-[rgba(255,255,255,0.08)] rounded-full px-3 py-1.5 text-xs">
+                  <Search className="w-3.5 h-3.5 text-[#8b8899] mr-2" />
+                  <input
+                    type="text"
+                    placeholder="Search polls..."
+                    value={pollSearchQuery}
+                    onChange={(e) => setPollSearchQuery(e.target.value)}
+                    className="bg-transparent text-xs text-[#f5f4f8] outline-none placeholder-neutral-600 w-36 sm:w-44"
+                  />
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (!token) setShowAuthModal(true);
+                    else setShowCreatePollModal(true);
+                  }}
+                  className="pill-cta px-4 py-2 text-xs flex items-center space-x-1.5"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>LAUNCH POLL</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Category Filter Chips */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2">
+              {['ALL', 'TECH_STACK', 'SENTIMENT', 'ORGANIZATION', 'FEEDBACK', 'GENERAL'].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setPollCategoryFilter(cat)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-mono uppercase transition whitespace-nowrap ${
+                    pollCategoryFilter === cat
+                      ? 'bg-[#1e1a2c] text-[#f5f4f8] font-bold border border-[rgba(191,165,255,0.3)]'
+                      : 'border border-[rgba(255,255,255,0.06)] text-[#8b8899] hover:text-white bg-[#0c0b12]'
+                  }`}
+                >
+                  {cat.replace('_', ' ')}
+                </button>
+              ))}
+            </div>
+
+            {/* Polls Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {polls.map((p) => (
+                <div
+                  key={p.id}
+                  className="ambient-card p-6 rounded-3xl space-y-5 flex flex-col justify-between hover:border-[rgba(191,165,255,0.4)] transition-all duration-300"
+                >
+                  <div className="space-y-4">
+                    {/* Header: Category & Status */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[9px] font-mono px-2.5 py-0.5 rounded-full bg-[#13111b] border border-[rgba(191,165,255,0.2)] text-[#bfa5ff] font-bold uppercase">
+                          {p.category.replace('_', ' ')}
+                        </span>
+                        <span className="text-[10px] text-[#8b8899] font-mono">
+                          {p.allowMultiple ? 'Multi-Choice' : 'Single Ballot'}
+                        </span>
+                      </div>
+
+                      <span className={`text-[8px] font-mono font-bold px-2.5 py-0.5 rounded-full border uppercase ${
+                        p.status === 'ACTIVE'
+                          ? 'border-[#9eea9a]/30 text-[#9eea9a] bg-[#9eea9a]/10'
+                          : 'border-neutral-700 text-neutral-400 bg-neutral-900'
+                      }`}>
+                        {p.status === 'ACTIVE' ? '● LIVE POLL' : '🔒 CLOSED'}
+                      </span>
+                    </div>
+
+                    {/* Question & Description */}
+                    <div>
+                      <h3 className="text-base font-bold text-[#f5f4f8] leading-snug">
+                        {p.question}
+                      </h3>
+                      {p.description && (
+                        <p className="text-xs text-[#c5c3d0] leading-relaxed mt-1 font-sans">
+                          {p.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Options List with Interactive Voting & Animated Percentage Bars */}
+                    <div className="space-y-2.5 pt-1">
+                      {p.options.map((opt) => {
+                        const isVoted = opt.hasUserVoted;
+                        const isPollActive = p.status === 'ACTIVE';
+
+                        return (
+                          <div
+                            key={opt.id}
+                            onClick={() => {
+                              if (isPollActive && !isVoted) {
+                                handleVotePoll(p.id, opt.id);
+                              }
+                            }}
+                            className={`relative overflow-hidden rounded-2xl border p-3.5 transition-all select-none ${
+                              isPollActive && !isVoted
+                                ? 'cursor-pointer hover:border-[rgba(191,165,255,0.5)] active:scale-[0.99]'
+                                : 'cursor-default'
+                            } ${
+                              isVoted
+                                ? 'bg-[#181424] border-[#7a4ee0] shadow-sm'
+                                : 'bg-[#0c0b12] border-[rgba(255,255,255,0.06)]'
+                            }`}
+                          >
+                            {/* Animated Background Progress Fill */}
+                            <div
+                              className={`absolute inset-y-0 left-0 transition-all duration-500 ${
+                                isVoted
+                                  ? 'bg-[#7a4ee0]/25'
+                                  : 'bg-[rgba(191,165,255,0.08)]'
+                              }`}
+                              style={{ width: `${opt.percentage}%` }}
+                            />
+
+                            {/* Option Content */}
+                            <div className="relative z-10 flex items-center justify-between text-xs">
+                              <div className="flex items-center space-x-2.5">
+                                <div className={`w-4 h-4 rounded-full border flex items-center justify-center text-[9px] ${
+                                  isVoted
+                                    ? 'border-[#9eea9a] bg-[#9eea9a] text-black font-bold'
+                                    : 'border-[rgba(255,255,255,0.2)] bg-[#13111b] text-transparent'
+                                }`}>
+                                  ✓
+                                </div>
+                                <span className={`font-medium ${isVoted ? 'text-[#f5f4f8] font-bold' : 'text-[#c5c3d0]'}`}>
+                                  {opt.text}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center space-x-2 font-mono text-[11px]">
+                                <span className="text-[#8b8899]">({opt.votesCount})</span>
+                                <span className={`font-bold ${isVoted ? 'text-[#bfa5ff]' : 'text-[#f5f4f8]'}`}>
+                                  {opt.percentage}%
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Poll Footer */}
+                  <div className="pt-3 border-t border-[rgba(255,255,255,0.06)] flex items-center justify-between text-[10px] font-mono text-[#8b8899]">
+                    <div className="flex items-center space-x-2">
+                      <span>Total: <strong className="text-[#f5f4f8]">{p.totalVotes}</strong> votes</span>
+                      <span>·</span>
+                      <span>By {p.creator?.name || 'Organizer'}</span>
+                    </div>
+
+                    {/* Organizer/Creator Close Action */}
+                    {p.status === 'ACTIVE' && (currentUser?.id === p.creator?.id || ['ORGANIZER', 'ADMIN'].includes(currentUser?.role)) && (
+                      <button
+                        onClick={() => handleClosePoll(p.id)}
+                        className="text-rose-400 hover:text-rose-300 transition uppercase font-bold"
+                      >
+                        Close Poll
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {polls.length === 0 && (
+              <div className="ambient-card p-12 text-center rounded-3xl text-xs text-[#8b8899] space-y-2">
+                <BarChart3 className="w-8 h-8 text-[#bfa5ff] mx-auto opacity-50" />
+                <p>Zero active polls found in this category.</p>
               </div>
             )}
           </div>
@@ -3507,6 +3827,111 @@ export default function App() {
                 className="pill-cta w-full py-3 text-xs font-bold tracking-wider uppercase"
               >
                 PUBLISH BOUNTY CHALLENGE
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* PHASE 24 CREATE POLL MODAL */}
+      {/* ============================================================ */}
+      {showCreatePollModal && (
+        <div className="fixed inset-0 z-50 bg-[#070609]/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="ambient-card p-8 rounded-3xl max-w-lg w-full space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-[rgba(255,255,255,0.06)] pb-4">
+              <div>
+                <span className="hud-mono-label text-[#bfa5ff]">COMMUNITY PULSE</span>
+                <h3 className="text-base font-bold text-[#f5f4f8] mt-1 uppercase">LAUNCH COMMUNITY POLL</h3>
+              </div>
+              <button
+                onClick={() => setShowCreatePollModal(false)}
+                className="p-1 rounded-full text-[#8b8899] hover:text-white hover:bg-[#1e1a2c]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePoll} className="space-y-4">
+              <div>
+                <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Question / Proposal</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Which zero-knowledge proving system is your team using?"
+                  value={newPollQuestion}
+                  onChange={(e) => setNewPollQuestion(e.target.value)}
+                  className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Context / Description (Optional)</label>
+                <textarea
+                  rows={2}
+                  placeholder="Additional background context for voters..."
+                  value={newPollDesc}
+                  onChange={(e) => setNewPollDesc(e.target.value)}
+                  className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0] resize-none font-sans"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Category</label>
+                  <select
+                    value={newPollCategory}
+                    onChange={(e) => setNewPollCategory(e.target.value)}
+                    className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-3 py-2 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                  >
+                    <option value="GENERAL">GENERAL</option>
+                    <option value="TECH_STACK">TECH STACK</option>
+                    <option value="SENTIMENT">SENTIMENT</option>
+                    <option value="ORGANIZATION">ORGANIZATION</option>
+                    <option value="FEEDBACK">FEEDBACK</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Ballot Type</label>
+                  <select
+                    value={newPollAllowMultiple ? 'true' : 'false'}
+                    onChange={(e) => setNewPollAllowMultiple(e.target.value === 'true')}
+                    className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-3 py-2 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                  >
+                    <option value="false">Single Choice (1 Option)</option>
+                    <option value="true">Multi Choice (Multiple)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Options (One per line, minimum 2)</label>
+                <textarea
+                  rows={4}
+                  required
+                  placeholder={"Plonky2 / Plonky3\nHalo2 / KZG\nGroth16 / Circom\nSTARKs / Boojum"}
+                  value={newPollOptions}
+                  onChange={(e) => setNewPollOptions(e.target.value)}
+                  className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0] font-mono resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-[#c5c3d0] mb-1 font-mono">Closes At (Optional)</label>
+                <input
+                  type="datetime-local"
+                  value={newPollClosesAt}
+                  onChange={(e) => setNewPollClosesAt(e.target.value)}
+                  className="w-full bg-[#070609] border border-[rgba(255,255,255,0.08)] rounded-2xl px-3 py-2 text-xs text-[#f5f4f8] outline-none focus:border-[#7a4ee0]"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="pill-cta w-full py-3 text-xs font-bold tracking-wider uppercase"
+              >
+                PUBLISH COMMUNITY POLL
               </button>
             </form>
           </div>

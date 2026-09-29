@@ -84,6 +84,8 @@ model User {
   bookedOfficeHours   OfficeHourSlot[]  @relation("BookedOfficeHours")
   createdBounties     Bounty[]          @relation("CreatedBounties")
   bountySubmissions   BountySubmission[] @relation("UserBountySubmissions")
+  createdPolls        Poll[]            @relation("CreatedPolls")
+  pollVotes           PollVote[]        @relation("UserPollVotes")
 
   @@map("users")
 }
@@ -114,6 +116,7 @@ model Event {
   supportTickets     SupportTicket[]
   officeHourSlots    OfficeHourSlot[]
   bounties           Bounty[]
+  polls              Poll[]
 
   @@map("events")
 }
@@ -582,6 +585,60 @@ model BountySubmission {
   @@index([status])
   @@map("bounty_submissions")
 }
+
+model Poll {
+  id            String       @id @default(cuid())
+  eventId       String
+  event         Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  creatorId     String
+  creator       User         @relation("CreatedPolls", fields: [creatorId], references: [id], onDelete: Cascade)
+  question      String
+  description   String?
+  category      String       @default("GENERAL") // "GENERAL", "SENTIMENT", "TECH_STACK", "ORGANIZATION", "FEEDBACK"
+  allowMultiple Boolean      @default(false)
+  status        String       @default("ACTIVE") // "ACTIVE", "CLOSED"
+  closesAt      DateTime?
+  options       PollOption[]
+  votes         PollVote[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([eventId])
+  @@index([creatorId])
+  @@index([status])
+  @@map("polls")
+}
+
+model PollOption {
+  id         String     @id @default(cuid())
+  pollId     String
+  poll       Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  text       String
+  order      Int        @default(0)
+  votesCount Int        @default(0)
+  votes      PollVote[]
+
+  @@index([pollId])
+  @@map("poll_options")
+}
+
+model PollVote {
+  id        String     @id @default(cuid())
+  pollId    String
+  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  optionId  String
+  option    PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation("UserPollVotes", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+
+  @@unique([pollId, userId, optionId])
+  @@index([pollId])
+  @@index([optionId])
+  @@index([userId])
+  @@map("poll_votes")
+}
+
 
 
 

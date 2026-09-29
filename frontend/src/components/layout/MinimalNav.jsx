@@ -21,6 +21,7 @@ export default function MinimalNav({
     { id: 'overview', label: 'Overview' },
     { id: 'gallery', label: 'Projects' },
     { id: 'bounties', label: 'Bounties' },
+    { id: 'polls', label: 'Polls' },
     { id: 'leaderboard', label: 'Leaderboard' },
     { id: 'announcements', label: 'Broadcasts' },
     { id: 'hackers', label: 'Builders' },
